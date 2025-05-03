@@ -6,6 +6,9 @@ stdenv.mkDerivation {
   buildInputs = with pkgs; [
     go
     gnumake
+    kind
+    kubectl
+    kubernetes-helm
   ];
   hardeningDisable = [ "fortify" ];
   shellHook = ''
