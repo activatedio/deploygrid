@@ -113,13 +113,13 @@ jobs:
           provenance: false
           build-args: GIT_OAUTH_TOKEN=${{ secrets.GH_BUILD_PAT }}
 
-    - name: Package and push helm chart
-      run: |
-        VERSION=${GITHUB_REF_NAME#v}
-        REPOSITORY=ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')
-        sed -i "s/v0\.0\.0/v${VERSION}/g" ./charts/deploygrid/values.yaml
-        helm package ./charts/deploygrid --version $VERSION
-        helm push ./deploygrid-$VERSION.tgz oci://$REPOSITORY
+      - name: Package and push helm chart
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          REPOSITORY=ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')
+          sed -i "s/v0\.0\.0/v${VERSION}/g" ./charts/deploygrid/values.yaml
+          helm package ./charts/deploygrid --version $VERSION
+          helm push ./deploygrid-$VERSION.tgz oci://$REPOSITORY
   
   create-manifests:
 
