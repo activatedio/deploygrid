@@ -1,0 +1,67 @@
+## Namespace
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd
+## Argocd
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dev-app-a
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/exampleorg/app-a.git
+    targetRevision: 0.1.2
+    path: app-a
+  destination:
+    server: https://127.0.0.1:6444
+    namespace: dev-app-a
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dev-app-b
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/exampleorg/app-b.git
+    targetRevision: 0.1.3
+    path: app-b
+  destination:
+    server: https://127.0.0.1:6444
+    namespace: dev-app-a
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: qa-app-a
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/exampleorg/app-a.git
+    targetRevision: 0.1.2
+    path: app-a
+  destination:
+    server: https://127.0.0.1:6445
+    namespace: qa-app-a
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: qa-app-b
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/exampleorg/app-b.git
+    targetRevision: 0.1.3
+    path: app-b
+  destination:
+    server: https://127.0.0.1:6445
+    namespace: qa-app-a

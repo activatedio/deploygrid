@@ -1,18 +1,9 @@
 dev_kind:
-	kind delete cluster
-	kind create cluster --config=./kind/kind-cluster.yaml
-	kubectl --context kind-kind apply -f ./kind/cert-manager-crds.yaml
-	kubectl --context kind-kind apply -f ./kind/bluebird-operator-crds.yaml
-	kubectl --context kind-kind apply -f ./kind/helm-operator-crds.yaml
-	kubectl --context kind-kind apply -f ./kind/test-resources.yaml
-
-dev_containers:
-	docker compose stop
-	docker compose rm -f
-	docker compose up -d
+	./kind/teardown.sh || true
+	./kind/setup.sh
 
 test:
 	go test ./...
 
 serve:
-	go run ./cmd/main
+	LOGGING_DEV_MODE=true go run ./cmd/main
