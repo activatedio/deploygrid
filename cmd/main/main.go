@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/activatedio/deploygrid/pkg/apiinfra/config"
 	apiinfraviper "github.com/activatedio/deploygrid/pkg/apiinfra/viper"
 	apiinfrazerolog "github.com/activatedio/deploygrid/pkg/apiinfra/zerolog"
+	"github.com/activatedio/deploygrid/pkg/config"
 	"github.com/rs/zerolog/log"
 	cobra "github.com/spf13/cobra"
 )

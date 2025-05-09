@@ -2,8 +2,8 @@ package zerolog
 
 import (
 	"fmt"
-	"github.com/activatedio/deploygrid/pkg/apiinfra/config"
 	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
+	"github.com/activatedio/deploygrid/pkg/config"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"os"
