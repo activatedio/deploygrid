@@ -27,3 +27,12 @@ type ClusterConfig struct {
 type ClustersConfig struct {
 	Clusters []ClusterConfig `mapstructure:"clusters"`
 }
+
+type SwaggerConfig struct {
+	SwaggerUIURL string `mapstructure:"swagger_ui_url"`
+}
+
+type ServerConfig struct {
+	Host string `mapstructure:"host"`
+	Port int    `mapstructure:"port"`
+}

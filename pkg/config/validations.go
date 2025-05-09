@@ -21,3 +21,11 @@ func (r *RepositoryStubConfig) DoValidate() error {
 func (c *ClustersConfig) DoValidate() error {
 	return validate(c)
 }
+
+func (s *SwaggerConfig) DoValidate() error {
+	return validate(s)
+}
+
+func (s *ServerConfig) DoValidate() error {
+	return validate(s)
+}

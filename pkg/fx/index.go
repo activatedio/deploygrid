@@ -5,6 +5,7 @@ import (
 	"github.com/activatedio/deploygrid/pkg/config"
 	"github.com/activatedio/deploygrid/pkg/controller"
 	"github.com/activatedio/deploygrid/pkg/repository/stub"
+	"github.com/activatedio/deploygrid/pkg/runner"
 	"github.com/spf13/viper"
 	"go.uber.org/fx"
 )
@@ -19,6 +20,9 @@ func Index(v *viper.Viper) fx.Option {
 		config.Index(),
 		controller.Index(v),
 		RepositoryIndex(v),
+		fx.Provide(
+			runner.NewServer,
+		),
 	)
 }
 

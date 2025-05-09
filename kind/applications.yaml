@@ -14,9 +14,11 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/exampleorg/app-a.git
-    targetRevision: 0.1.2
-    path: app-a
+    chart: sealed-secrets
+    repoURL: https://bitnami-labs.github.io/sealed-secrets
+    targetRevision: 1.16.1
+    helm:
+      releaseName: sealed-secrets
   destination:
     server: https://127.0.0.1:6444
     namespace: dev-app-a
@@ -29,9 +31,11 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/exampleorg/app-b.git
-    targetRevision: 0.1.3
-    path: app-b
+    chart: sealed-secrets
+    repoURL: https://bitnami-labs.github.io/sealed-secrets
+    targetRevision: 1.16.1
+    helm:
+      releaseName: sealed-secrets
   destination:
     server: https://127.0.0.1:6444
     namespace: dev-app-a
@@ -44,9 +48,11 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/exampleorg/app-a.git
-    targetRevision: 0.1.2
-    path: app-a
+    chart: sealed-secrets
+    repoURL: https://bitnami-labs.github.io/sealed-secrets
+    targetRevision: 1.16.1
+    helm:
+      releaseName: sealed-secrets
   destination:
     server: https://127.0.0.1:6445
     namespace: qa-app-a
@@ -59,9 +65,11 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/exampleorg/app-b.git
-    targetRevision: 0.1.3
-    path: app-b
+    chart: sealed-secrets
+    repoURL: https://bitnami-labs.github.io/sealed-secrets
+    targetRevision: 1.16.1
+    helm:
+      releaseName: sealed-secrets
   destination:
     server: https://127.0.0.1:6445
     namespace: qa-app-a

@@ -7,6 +7,9 @@ import (
 
 func Index(v *viper.Viper) fx.Option {
 
-	return fx.Module("deploygrid.controller", fx.Provide(NewDeployments))
+	return fx.Module("deploygrid.controller", fx.Provide(
+		NewDeployments,
+		NewRouter,
+	))
 
 }

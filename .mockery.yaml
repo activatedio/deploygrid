@@ -1,0 +1,9 @@
+with-expecter: True
+dir: "{{.InterfaceDir}}/mock_{{.PackageName}}"
+mockname: "{{.InterfaceName}}"
+outpkg: "mock_{{.PackageName}}"
+filename: "{{.InterfaceName}}.go"
+include-regex: "^[A-Z].*$"
+packages:
+  github.com/activatedio/deploygrid/pkg/repository: {}
+  github.com/activatedio/deploygrid/pkg/service: {}

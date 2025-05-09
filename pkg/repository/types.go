@@ -9,13 +9,14 @@ type ComponentCriteria struct {
 }
 
 type Component struct {
-	Namespace    string
-	ApiVersion   string
-	Kind         string
-	SubComponent string
-	Name         string
-	Labels       map[string]string
-	Version      string
+	Namespace        string
+	ApiVersion       string
+	Kind             string
+	ComponentName    string
+	SubComponentName string
+	Name             string
+	Labels           map[string]string
+	Version          string
 }
 
 type ComponentRepository interface {
@@ -23,5 +24,6 @@ type ComponentRepository interface {
 }
 
 type ClusterAwareAccessor[R any] interface {
+	ClusterNames(ctx context.Context) []string
 	Get(ctx context.Context, clusterName string) (R, error)
 }

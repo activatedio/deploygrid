@@ -56,6 +56,16 @@ type componentRepositoryClusterAwareAccessor struct {
 	repositories map[string]repository.ComponentRepository
 }
 
+func (c *componentRepositoryClusterAwareAccessor) ClusterNames(ctx context.Context) []string {
+	var res []string
+
+	for k, _ := range c.repositories {
+		res = append(res, k)
+	}
+
+	return res
+}
+
 func (c *componentRepositoryClusterAwareAccessor) Get(ctx context.Context, clusterName string) (repository.ComponentRepository, error) {
 
 	if r, ok := c.repositories[clusterName]; ok {

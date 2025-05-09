@@ -20,3 +20,11 @@ func NewRepositoryStubConfig(v *viper.Viper) *RepositoryStubConfig {
 func NewClustersConfig(v *viper.Viper) *ClustersConfig {
 	return apiinfraconfig.MustUnmarshallAndValidate(v, PrefixClusters, &ClustersConfig{})
 }
+
+func NewSwaggerConfig(v *viper.Viper) *SwaggerConfig {
+	return apiinfraconfig.MustUnmarshallAndValidate(v, PrefixSwagger, &SwaggerConfig{})
+}
+
+func NewServerConfig(v *viper.Viper) *ServerConfig {
+	return apiinfraconfig.MustUnmarshallAndValidate(v, PrefixServer, &ServerConfig{})
+}

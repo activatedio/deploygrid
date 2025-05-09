@@ -6,6 +6,7 @@ import (
 	"github.com/activatedio/deploygrid/pkg/repository"
 	"github.com/activatedio/deploygrid/pkg/repository/stub"
 	"github.com/stretchr/testify/assert"
+	"slices"
 	"testing"
 )
 
@@ -20,32 +21,28 @@ func TestComponentRepository_List(t *testing.T) {
 
 	fullList := []repository.Component{
 		{
-			Namespace:    "n1",
-			ApiVersion:   "a1",
-			Kind:         "k1",
-			SubComponent: "",
-			Name:         "name1",
+			Namespace:  "n1",
+			ApiVersion: "a1",
+			Kind:       "k1",
+			Name:       "name1",
 		},
 		{
-			Namespace:    "n1",
-			ApiVersion:   "a2",
-			Kind:         "k2",
-			SubComponent: "",
-			Name:         "name2",
+			Namespace:  "n1",
+			ApiVersion: "a2",
+			Kind:       "k2",
+			Name:       "name2",
 		},
 		{
-			Namespace:    "n2",
-			ApiVersion:   "a1",
-			Kind:         "k1",
-			SubComponent: "",
-			Name:         "name1",
+			Namespace:  "n2",
+			ApiVersion: "a1",
+			Kind:       "k1",
+			Name:       "name1",
 		},
 		{
-			Namespace:    "n2",
-			ApiVersion:   "a2",
-			Kind:         "k2",
-			SubComponent: "",
-			Name:         "name2",
+			Namespace:  "n2",
+			ApiVersion: "a2",
+			Kind:       "k2",
+			Name:       "name2",
 		},
 	}
 
@@ -98,6 +95,54 @@ func TestComponentRepository_List(t *testing.T) {
 			unit := stub.NewComponentRepository(bs)
 
 			v.assert(unit.List(context.TODO(), c))
+		})
+	}
+}
+
+func TestComponentRepositoryClusterAwareAccessor_ClusterNames(t *testing.T) {
+
+	a := assert.New(t)
+
+	type s struct {
+		arrange func() []byte
+		assert  func(got []string)
+	}
+
+	cases := map[string]s{
+		"empty": {
+			arrange: func() []byte {
+				return []byte(`---`)
+			},
+			assert: func(got []string) {
+				a.Nil(got)
+			},
+		},
+		"two empty": {
+			arrange: func() []byte {
+				return []byte(`---
+one: []
+two: []
+`)
+			},
+			assert: func(got []string) {
+				slices.Sort(got)
+				a.Equal([]string{"one", "two"}, got)
+			},
+		},
+	}
+
+	for k, v := range cases {
+		t.Run(k, func(t *testing.T) {
+
+			bs := v.arrange()
+
+			unit := stub.NewComponentRepositoryClusterAwareAccessor(stub.ComponentRepositoryClusterAwareAccessorParams{
+				RepositoryStubConfig: &config.RepositoryStubConfig{
+					StaticDataBytes: bs,
+				},
+			})
+
+			v.assert(unit.ClusterNames(context.TODO()))
 		})
 	}
 }
