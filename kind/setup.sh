@@ -26,3 +26,5 @@ kubectl --context kind-ops-cluster-1 apply -f ${dir}/applications.yaml
 
 # Applications
 kubectl --context kind-app-cluster-1 apply -f ${dir}/deployments-dev.yaml
+kubectl --context kind-app-cluster-1 apply -f ${dir}/deployments-qa.yaml
+kubectl --context kind-app-cluster-2 apply -f ${dir}/deployments-stage.yaml

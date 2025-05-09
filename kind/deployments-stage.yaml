@@ -2,18 +2,18 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: qa-app-a
+  name: stage-app-a
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: qa-app-a
+  namespace: stage-app-a
   name: app
   labels:
-    app.kubernetes.io/name: qa-app-a
+    app.kubernetes.io/name: stage-app-a
     helm.sh/chart: sealed-secrets-1.16.1
     app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/instance: qa-app-a
+    app.kubernetes.io/instance: stage-app-a
 spec:
   selector:
     matchLabels:
@@ -33,13 +33,13 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: qa-app-a
+  namespace: stage-app-a
   name: app-side
   labels:
-    app.kubernetes.io/name: qa-app-a
+    app.kubernetes.io/name: stage-app-a
     helm.sh/chart: sealed-secrets-1.16.1
     app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/instance: qa-app-a
+    app.kubernetes.io/instance: stage-app-a
 spec:
   selector:
     matchLabels:
@@ -59,18 +59,18 @@ spec:
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: qa-app-b
+  name: stage-app-b
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: qa-app-b
+  namespace: stage-app-b
   name: app
   labels:
-    app.kubernetes.io/name: qa-app-b
+    app.kubernetes.io/name: stage-app-b
     helm.sh/chart: sealed-secrets-1.16.1
     app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/instance: qa-app-b
+    app.kubernetes.io/instance: stage-app-b
 spec:
   selector:
     matchLabels:
@@ -90,13 +90,13 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: qa-app-b
+  namespace: stage-app-b
   name: app-side
   labels:
-    app.kubernetes.io/name: qa-app-b
+    app.kubernetes.io/name: stage-app-b
     helm.sh/chart: sealed-secrets-1.16.1
     app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/instance: qa-app-b
+    app.kubernetes.io/instance: stage-app-b
 spec:
   selector:
     matchLabels:
