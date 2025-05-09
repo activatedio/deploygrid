@@ -23,3 +23,6 @@ makecluster app-cluster-2
 kubectl --context kind-ops-cluster-1 apply -f ${dir}/argocd-application-crds.yaml 
 sleep 2
 kubectl --context kind-ops-cluster-1 apply -f ${dir}/applications.yaml
+
+# Applications
+kubectl --context kind-app-cluster-1 apply -f ${dir}/deployments-dev.yaml

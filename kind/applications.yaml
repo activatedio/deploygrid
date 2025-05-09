@@ -17,8 +17,6 @@ spec:
     chart: sealed-secrets
     repoURL: https://bitnami-labs.github.io/sealed-secrets
     targetRevision: 1.16.1
-    helm:
-      releaseName: sealed-secrets
   destination:
     server: https://127.0.0.1:6444
     namespace: dev-app-a
@@ -34,8 +32,6 @@ spec:
     chart: sealed-secrets
     repoURL: https://bitnami-labs.github.io/sealed-secrets
     targetRevision: 1.16.1
-    helm:
-      releaseName: sealed-secrets
   destination:
     server: https://127.0.0.1:6444
     namespace: dev-app-a
@@ -51,10 +47,8 @@ spec:
     chart: sealed-secrets
     repoURL: https://bitnami-labs.github.io/sealed-secrets
     targetRevision: 1.16.1
-    helm:
-      releaseName: sealed-secrets
   destination:
-    server: https://127.0.0.1:6445
+    server: https://127.0.0.1:6444
     namespace: qa-app-a
 ---
 apiVersion: argoproj.io/v1alpha1
@@ -68,8 +62,36 @@ spec:
     chart: sealed-secrets
     repoURL: https://bitnami-labs.github.io/sealed-secrets
     targetRevision: 1.16.1
-    helm:
-      releaseName: sealed-secrets
+  destination:
+    server: https://127.0.0.1:6444
+    namespace: qa-app-a
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: stage-app-a
+  namespace: argocd
+spec:
+  project: default
+  source:
+    chart: sealed-secrets
+    repoURL: https://bitnami-labs.github.io/sealed-secrets
+    targetRevision: 1.16.1
   destination:
     server: https://127.0.0.1:6445
-    namespace: qa-app-a
+    namespace: stage-app-a
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: stage-app-b
+  namespace: argocd
+spec:
+  project: default
+  source:
+    chart: sealed-secrets
+    repoURL: https://bitnami-labs.github.io/sealed-secrets
+    targetRevision: 1.16.1
+  destination:
+    server: https://127.0.0.1:6445
+    namespace: stage-app-a

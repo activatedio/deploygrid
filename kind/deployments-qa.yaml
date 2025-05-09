@@ -1,0 +1,114 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev-app-a
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: dev-app-a
+  name: app
+  labels:
+    app.kubernetes.io/name: dev-app-a
+    helm.sh/chart: sealed-secrets-1.16.1
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: dev-app-a
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: dev-app-a
+  name: app-side
+  labels:
+    app.kubernetes.io/name: dev-app-a
+    helm.sh/chart: sealed-secrets-1.16.1
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: dev-app-a
+spec:
+  selector:
+    matchLabels:
+      app: nginx-side
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: nginx-side
+    spec:
+      containers:
+      - name: nginx-side
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev-app-b
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: dev-app-b
+  name: app
+  labels:
+    app.kubernetes.io/name: dev-app-b
+    helm.sh/chart: sealed-secrets-1.16.1
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: dev-app-b
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: dev-app-b
+  name: app-side
+  labels:
+    app.kubernetes.io/name: dev-app-b
+    helm.sh/chart: sealed-secrets-1.16.1
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: dev-app-b
+spec:
+  selector:
+    matchLabels:
+      app: nginx-side
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: nginx-side
+    spec:
+      containers:
+      - name: nginx-side
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
