@@ -7,6 +7,7 @@ import (
 	"github.com/activatedio/deploygrid/pkg/controller"
 	"github.com/activatedio/deploygrid/pkg/repository/stub"
 	"github.com/activatedio/deploygrid/pkg/runner"
+	"github.com/activatedio/deploygrid/pkg/service"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 	"go.uber.org/fx"
@@ -34,6 +35,7 @@ func Index(v *viper.Viper) fx.Option {
 		fx.Provide(
 			runner.NewServer,
 			apiinframux.NewOpenapi,
+			service.NewGridService,
 		),
 		fx.Invoke(func(r *mux.Router, o apiinframux.Openapi, d controller.Deployments) error {
 			return o.Mount(r, d.OpenapiBuilder())
