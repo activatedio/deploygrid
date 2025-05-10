@@ -1,11 +1,14 @@
 package repository
 
-import "context"
+import (
+	"context"
+)
 
 type ComponentCriteria struct {
-	Namespace  string
-	ApiVersion string
-	Kind       string
+	Namespace     string
+	ApiVersion    string
+	Kind          string
+	LabelSelector string
 }
 
 type Component struct {

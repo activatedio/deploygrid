@@ -16,6 +16,7 @@ require (
 	github.com/swaggest/openapi-go v0.2.58
 	go.uber.org/fx v1.23.0
 	gopkg.in/yaml.v3 v3.0.1
+	k8s.io/api v0.33.0
 	k8s.io/apimachinery v0.33.0
 	k8s.io/client-go v0.33.0
 )

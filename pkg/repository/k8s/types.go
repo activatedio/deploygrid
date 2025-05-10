@@ -16,7 +16,7 @@ type ApplicationDestinationSpec struct {
 	Namespace string `json:"namespace"`
 }
 
-type ApplicatinSpec struct {
+type ApplicationSpec struct {
 	Destination ApplicationDestinationSpec `json:"destination"`
 	Source      ApplicationSourceSpec      `json:"source"`
 }
@@ -24,5 +24,5 @@ type ApplicatinSpec struct {
 type Application struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              ApplicatinSpec `json:"spec,omitempty"`
+	Spec              ApplicationSpec `json:"spec,omitempty"`
 }

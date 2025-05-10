@@ -8,7 +8,8 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/sony/gobreaker/v2"
 	"go.uber.org/fx"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -20,7 +21,7 @@ import (
 )
 
 type componentRepository struct {
-	client *dynamic.DynamicClient
+	client dynamic.Interface
 	cb     *gobreaker.CircuitBreaker[[]repository.Component]
 }
 
@@ -63,8 +64,9 @@ func (c *componentRepository) List(ctx context.Context, criteria repository.Comp
 
 		for initial || cont != "" {
 			initial = false
-			list, err := res.List(ctx, v1.ListOptions{
-				Continue: cont,
+			list, err := res.List(ctx, metav1.ListOptions{
+				LabelSelector: criteria.LabelSelector,
+				Continue:      cont,
 			})
 			if err != nil {
 				return nil, err
@@ -123,11 +125,46 @@ var (
 			},
 		}, nil
 	}
+	deploymentHandler = func(in map[string]any) ([]repository.Component, error) {
+
+		d := &appsv1.Deployment{}
+
+		err := decodeMap(in, d)
+
+		if err != nil {
+			return nil, err
+		}
+
+		var res []repository.Component
+
+		for _, c := range d.Spec.Template.Spec.Containers {
+
+			imgParts := strings.Split(c.Image, ":")
+
+			res = append(res, repository.Component{
+				Namespace:        d.Namespace,
+				ApiVersion:       d.APIVersion,
+				Kind:             d.Kind,
+				ComponentName:    d.Name,
+				SubComponentName: c.Name,
+				Name:             d.Name,
+				Labels:           d.Labels,
+				Version:          imgParts[len(imgParts)-1],
+			})
+
+		}
+
+		return res, nil
+	}
 	handlers = map[apiVersionKind]func(in map[string]any) ([]repository.Component, error){
 		{
 			apiVersion: "argoproj.io/v1alpha1",
 			kind:       "Application",
 		}: applicationHandler,
+		{
+			apiVersion: "apps/v1",
+			kind:       "Deployment",
+		}: deploymentHandler,
 	}
 )
 
@@ -141,11 +178,9 @@ func (c *componentRepository) toComponents(lists []*unstructured.UnstructuredLis
 				if h, _ok := handlers[apiVersionKind{u.GetAPIVersion(), u.GetKind()}]; _ok {
 
 					_res, err := h(u.Object)
-
 					if err != nil {
 						return err
 					}
-
 					res = append(res, _res...)
 
 				} else {
@@ -164,7 +199,7 @@ func (c *componentRepository) toComponents(lists []*unstructured.UnstructuredLis
 	return res, nil
 }
 
-func NewComponentRepository(name string, client *dynamic.DynamicClient) repository.ComponentRepository {
+func NewComponentRepository(name string, client dynamic.Interface) repository.ComponentRepository {
 	return &componentRepository{
 		client: client,
 		cb: gobreaker.NewCircuitBreaker[[]repository.Component](gobreaker.Settings{
