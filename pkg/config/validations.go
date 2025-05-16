@@ -10,14 +10,6 @@ func (l *LoggingConfig) DoValidate() error {
 	return validate(l)
 }
 
-func (r *RepositoryCommonConfig) DoValidate() error {
-	return validate(r)
-}
-
-func (r *RepositoryStubConfig) DoValidate() error {
-	return validate(r)
-}
-
 func (c *ClustersConfig) DoValidate() error {
 	return validate(c)
 }

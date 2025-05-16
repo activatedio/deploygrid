@@ -4,26 +4,27 @@ import (
 	"context"
 )
 
-type ComponentCriteria struct {
-	Namespace     string
-	ApiVersion    string
-	Kind          string
-	LabelSelector string
-}
-
 type Component struct {
-	Namespace        string
-	ApiVersion       string
-	Kind             string
-	ComponentName    string
-	SubComponentName string
-	Name             string
-	Labels           map[string]string
-	Version          string
+	DisplayName string
+	Version     string
 }
 
-type ComponentRepository interface {
-	List(ctx context.Context, criteria ComponentCriteria) ([]Component, error)
+type Resource struct {
+	Name       string
+	Parent     string
+	Components []Component
+}
+
+type ResourceStore interface {
+	Add(in *Resource) error
+	Modify(in *Resource) error
+	Delete(in *Resource) error
+	Replace(in []*Resource) error
+	Error(err error)
+}
+
+type ResourceRepository interface {
+	Watch(ctx context.Context, store ResourceStore)
 }
 
 type ClusterAwareAccessor[R any] interface {

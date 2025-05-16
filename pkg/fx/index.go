@@ -1,11 +1,9 @@
 package fx
 
 import (
-	"fmt"
 	apiinframux "github.com/activatedio/deploygrid/pkg/apiinfra/mux"
 	"github.com/activatedio/deploygrid/pkg/config"
 	"github.com/activatedio/deploygrid/pkg/controller"
-	"github.com/activatedio/deploygrid/pkg/repository/stub"
 	"github.com/activatedio/deploygrid/pkg/runner"
 	"github.com/activatedio/deploygrid/pkg/service"
 	"github.com/gorilla/mux"
@@ -31,7 +29,6 @@ func Index(v *viper.Viper) fx.Option {
 	),
 		config.Index(),
 		controller.Index(v),
-		RepositoryIndex(v),
 		fx.Provide(
 			runner.NewServer,
 			apiinframux.NewOpenapi,
@@ -41,18 +38,4 @@ func Index(v *viper.Viper) fx.Option {
 			return o.Mount(r, d.OpenapiBuilder())
 		}),
 	)
-}
-
-func RepositoryIndex(v *viper.Viper) fx.Option {
-
-	rc := config.NewRepositoryCommonConfig(v)
-
-	switch rc.Mode {
-	case config.RepositoryModeStub:
-		return stub.Index(v)
-	case config.RepositoryModeK8s:
-		panic(fmt.Errorf("not yet supported %s", rc.Mode))
-	default:
-		panic(fmt.Errorf("invalid repository mode %s", rc.Mode))
-	}
 }
