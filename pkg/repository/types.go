@@ -9,10 +9,16 @@ type Component struct {
 	Version     string
 }
 
+type ClusterLocation struct {
+	Server    string
+	Namespace string
+}
+
 type Resource struct {
-	Name       string
-	Parent     string
-	Components []Component
+	Name             string
+	Parent           string
+	ChildrenLocation []ClusterLocation
+	Components       []Component
 }
 
 type ResourceStore interface {
