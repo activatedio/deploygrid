@@ -8,28 +8,28 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/sony/gobreaker/v2"
 	"go.uber.org/fx"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"sync"
 )
 
 type cluster struct {
 	config *config.ClusterConfig
-	cb     *gobreaker.CircuitBreaker[repository.ResourceRepository]
+	cb     *gobreaker.CircuitBreaker[*repository.Resources]
 }
 
 type resourceRepositoryClusterAwareAccessor struct {
+	clusterNames []string
 	clusters     map[string]cluster
-	repositoires map[string]repository.ResourceRepository
+	repositoires map[string]*repository.Resources
 	lock         sync.Mutex
 }
 
 func (c *resourceRepositoryClusterAwareAccessor) ClusterNames(ctx context.Context) []string {
-	return nil
+	return c.clusterNames
 }
 
-func (c *resourceRepositoryClusterAwareAccessor) Get(ctx context.Context, clusterName string) (repository.ResourceRepository, error) {
+func (c *resourceRepositoryClusterAwareAccessor) Get(ctx context.Context, clusterName string) (*repository.Resources, error) {
 
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -44,21 +44,21 @@ func (c *resourceRepositoryClusterAwareAccessor) Get(ctx context.Context, cluste
 		return nil, errors.New(fmt.Sprintf("cluster not found: %s", clusterName))
 	}
 
-	r, err := cl.cb.Execute(func() (repository.ResourceRepository, error) {
+	r, err := cl.cb.Execute(func() (*repository.Resources, error) {
 
-		client, err := dynamic.NewForConfig(&rest.Config{
-			Host: cl.config.Address,
-		})
+		cfg, err := clientcmd.BuildConfigFromFlags("", cl.config.KubeConfigPath)
 
 		if err != nil {
 			return nil, err
 		}
 
-		return NewResourceRepository(ResourceRepositoryParams{
-			Client:               client,
-			GroupVersionResource: schema.GroupVersionResource{},
-			ToResource:           nil,
-		}), nil
+		client, err := dynamic.NewForConfig(cfg)
+
+		if err != nil {
+			return nil, err
+		}
+
+		return NewResources(client), nil
 	})
 
 	if err != nil {
@@ -75,20 +75,24 @@ type ResourceRepositoryClusterAwareAccessorParams struct {
 	ClustersConfig *config.ClustersConfig
 }
 
-func NewResourceRepositoryClusterAwareAccessor(params ResourceRepositoryClusterAwareAccessorParams) repository.ClusterAwareAccessor[repository.ResourceRepository] {
+func NewResourceRepositoryClusterAwareAccessor(params ResourceRepositoryClusterAwareAccessorParams) repository.ClusterAwareAccessor[*repository.Resources] {
 
+	var clusterNames []string
 	clusters := map[string]cluster{}
 
 	for _, c := range params.ClustersConfig.Clusters {
+		clusterNames = append(clusterNames, c.Name)
 		clusters[c.Name] = cluster{
 			config: &c,
-			cb: gobreaker.NewCircuitBreaker[repository.ResourceRepository](gobreaker.Settings{
+			cb: gobreaker.NewCircuitBreaker[*repository.Resources](gobreaker.Settings{
 				Name: "factory",
 			}),
 		}
 	}
 
 	return &resourceRepositoryClusterAwareAccessor{
-		clusters: clusters,
+		clusterNames: clusterNames,
+		clusters:     clusters,
+		repositoires: map[string]*repository.Resources{},
 	}
 }

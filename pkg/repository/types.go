@@ -5,20 +5,30 @@ import (
 )
 
 type Component struct {
+	// Name Primary name which uniquely identifies the component and can be used for parent relationshipos
+	Name string
+	// SimpleName which is common for other items in the same ro
+	SimpleName string
+	// DisplayName is the full name to display when showing the component in a cell
 	DisplayName string
-	Version     string
+	// Type of component
+	Type string
+	// Version fo the commonent
+	Version string
+	// PathElement is the location in the tree for the component
+	PathElement      string
+	ChildrenLocation []ClusterLocation
 }
 
 type ClusterLocation struct {
-	Server    string
-	Namespace string
+	Server string
 }
 
 type Resource struct {
-	Name             string
-	Parent           string
-	ChildrenLocation []ClusterLocation
-	Components       []Component
+	Name       string
+	Parent     string
+	Labels     map[string]string
+	Components []Component
 }
 
 type ResourceStore interface {
@@ -36,4 +46,9 @@ type ResourceRepository interface {
 type ClusterAwareAccessor[R any] interface {
 	ClusterNames(ctx context.Context) []string
 	Get(ctx context.Context, clusterName string) (R, error)
+}
+
+type Resources struct {
+	Applications ResourceRepository
+	Deployment   ResourceRepository
 }

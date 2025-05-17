@@ -11,7 +11,8 @@ import (
 type RouterParams struct {
 	fx.In
 	SwaggerConfig *config.SwaggerConfig
-	Deployments   Deployments
+	Grid          Grid
+	Health        Health
 }
 
 func NewRouter(params RouterParams) *mux.Router {
@@ -22,7 +23,8 @@ func NewRouter(params RouterParams) *mux.Router {
 
 	r := mux.NewRouter()
 
-	r.HandleFunc("/grid", params.Deployments.Get).Methods(http.MethodGet)
+	r.HandleFunc("/healthz", params.Health.Healthz).Methods(http.MethodGet)
+	r.HandleFunc("/grid", params.Grid.Get).Methods(http.MethodGet)
 
 	_su := params.SwaggerConfig.SwaggerUIURL
 

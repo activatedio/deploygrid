@@ -1,0 +1,18 @@
+---
+logging:
+  devMode: true
+clusters:
+  clusters:
+    - name: kind-ops-cluster-1
+      address: https://127.0.0.1:6443
+      kubeConfigPath: ../.kind/kubeconfig-ops-cluster-1.yaml
+      contextName: kind-ops-cluster-1
+    - name: kind-app-cluster-1
+      address: https://127.0.0.1:6444
+      kubeConfigPath: ../.kind/kubeconfig-app-cluster-1.yaml
+      contextName: kind-app-cluster-1
+    - name: kind-app-cluster-2
+      address: https://127.0.0.1:6445
+      kubeConfigPath: ../.kind/kubeconfig-app-cluster-2.yaml
+      contextName: kind-app-cluster-2
+

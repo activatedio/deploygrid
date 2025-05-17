@@ -6,5 +6,6 @@ import (
 )
 
 type GridService interface {
+	Init()
 	Get(ctx context.Context) (*deploygrid.Grid, error)
 }

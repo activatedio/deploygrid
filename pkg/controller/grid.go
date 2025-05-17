@@ -9,11 +9,11 @@ import (
 	"net/http"
 )
 
-type deployments struct {
+type grid struct {
 	GridService service.GridService
 }
 
-func (d *deployments) OpenapiBuilder() apiinframux.OpenapiBuilder {
+func (d *grid) OpenapiBuilder() apiinframux.OpenapiBuilder {
 	return func(r *openapi3.Reflector) error {
 
 		oc, err := r.NewOperationContext(http.MethodGet, "/grid")
@@ -28,7 +28,7 @@ func (d *deployments) OpenapiBuilder() apiinframux.OpenapiBuilder {
 	}
 }
 
-func (d *deployments) Get(w http.ResponseWriter, r *http.Request) {
+func (d *grid) Get(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	g, err := d.GridService.Get(r.Context())
@@ -41,8 +41,8 @@ func (d *deployments) Get(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(g)
 }
 
-func NewDeployments(gridService service.GridService) Deployments {
-	return &deployments{
+func NewGrid(gridService service.GridService) Grid {
+	return &grid{
 		GridService: gridService,
 	}
 }

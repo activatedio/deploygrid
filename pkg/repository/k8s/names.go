@@ -2,10 +2,10 @@ package k8s
 
 import "fmt"
 
-func ApplicationName(namespace, name string) string {
-	return fmt.Sprintf("applications/%s/%s", namespace, name)
+func ApplicationName(name string) string {
+	return fmt.Sprintf("applications/%s", name)
 }
 
 func DeploymentName(namespace, name string) string {
-	return fmt.Sprintf("deployments/%s/%s", namespace, name)
+	return fmt.Sprintf("namespaces/%s/deployments/%s", namespace, name)
 }

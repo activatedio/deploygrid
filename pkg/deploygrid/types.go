@@ -16,6 +16,7 @@ type Deployment struct {
 }
 
 type Grid struct {
+	Errors       []string      `json:"errors"`
 	Environments []Environment `json:"environments"`
 	Components   []Component   `json:"components"`
 }

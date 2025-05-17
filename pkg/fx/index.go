@@ -4,6 +4,7 @@ import (
 	apiinframux "github.com/activatedio/deploygrid/pkg/apiinfra/mux"
 	"github.com/activatedio/deploygrid/pkg/config"
 	"github.com/activatedio/deploygrid/pkg/controller"
+	"github.com/activatedio/deploygrid/pkg/repository/k8s"
 	"github.com/activatedio/deploygrid/pkg/runner"
 	"github.com/activatedio/deploygrid/pkg/service"
 	"github.com/gorilla/mux"
@@ -29,12 +30,16 @@ func Index(v *viper.Viper) fx.Option {
 	),
 		config.Index(),
 		controller.Index(v),
+		k8s.Index(),
 		fx.Provide(
 			runner.NewServer,
 			apiinframux.NewOpenapi,
 			service.NewGridService,
 		),
-		fx.Invoke(func(r *mux.Router, o apiinframux.Openapi, d controller.Deployments) error {
+		fx.Invoke(func(service service.GridService) {
+			service.Init()
+		}),
+		fx.Invoke(func(r *mux.Router, o apiinframux.Openapi, d controller.Grid) error {
 			return o.Mount(r, d.OpenapiBuilder())
 		}),
 	)

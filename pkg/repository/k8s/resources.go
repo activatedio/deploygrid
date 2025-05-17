@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"fmt"
 	"github.com/activatedio/deploygrid/pkg/repository"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -33,18 +34,24 @@ func NewApplicationRepository(client dynamic.Interface) repository.ResourceRepos
 				compName = parts[len(parts)-1]
 			}
 
+			simpleName := app.Spec.Source.Chart
+
 			return &repository.Resource{
-				Name: ApplicationName(app.Namespace, app.Name),
-				ChildrenLocation: []repository.ClusterLocation{
-					{
-						Server:    app.Spec.Destination.Server,
-						Namespace: app.Spec.Destination.Namespace,
-					},
-				},
+				Name:   ApplicationName(app.Name),
+				Labels: app.Labels,
 				Components: []repository.Component{
 					{
+						Name:        ApplicationName(app.Name),
+						SimpleName:  simpleName,
 						DisplayName: app.Name,
+						Type:        "Application Helm Chart",
 						Version:     app.Spec.Source.TargetRevision,
+						PathElement: fmt.Sprintf("applicationcharts/%s", simpleName),
+						ChildrenLocation: []repository.ClusterLocation{
+							{
+								Server: app.Spec.Destination.Server,
+							},
+						},
 					},
 				},
 			}, nil
@@ -73,7 +80,7 @@ func NewDeploymentRepository(client dynamic.Interface) repository.ResourceReposi
 			parent := ""
 
 			if mb, ok := dep.Labels["app.kubernetes.io/managed-by"]; ok && mb == "Helm" {
-				parent = ApplicationName(dep.Namespace, dep.Labels["app.kubernetes.io/instance"])
+				parent = ApplicationName(dep.Labels["app.kubernetes.io/instance"])
 			}
 
 			var comps []repository.Component
@@ -88,17 +95,33 @@ func NewDeploymentRepository(client dynamic.Interface) repository.ResourceReposi
 					version = parts[1]
 				}
 
+				pathElement := fmt.Sprintf("deployments/%s/containers/%s", dep.Name, c.Name)
+				name := fmt.Sprintf("namespaces/%s/%s", dep.Namespace, pathElement)
+				simpleName := fmt.Sprintf("%s/%s", dep.Name, c.Name)
+
 				comps = append(comps, repository.Component{
-					DisplayName: c.Name,
+					Name:        name,
+					SimpleName:  simpleName,
+					DisplayName: simpleName,
+					Type:        "Container",
 					Version:     version,
+					PathElement: pathElement,
 				})
 			}
 
 			return &repository.Resource{
 				Name:       DeploymentName(dep.Namespace, dep.Name),
+				Labels:     dep.Labels,
 				Parent:     parent,
 				Components: comps,
 			}, nil
 		},
 	})
+}
+
+func NewResources(client dynamic.Interface) *repository.Resources {
+	return &repository.Resources{
+		Applications: NewApplicationRepository(client),
+		Deployment:   NewDeploymentRepository(client),
+	}
 }
