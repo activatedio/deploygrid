@@ -3,11 +3,14 @@ package service
 import (
 	"context"
 	"fmt"
+	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
 	"github.com/activatedio/deploygrid/pkg/config"
 	"github.com/activatedio/deploygrid/pkg/deploygrid"
 	"github.com/activatedio/deploygrid/pkg/repository"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/fx"
+	"slices"
+	"strings"
 	"sync"
 )
 
@@ -89,8 +92,92 @@ func newGridCell() *gridCell {
 }
 
 type gridRow struct {
+	level int
 	group string
 	cells map[string]*gridCell
+}
+
+func (g *gridRow) expand() []*deploygrid.Component {
+
+	type gridNodeEnvs struct {
+		// first is used to set names of the component
+		first *gridNode
+		nodes map[string]*gridNode
+	}
+
+	pathMap := map[string]bool{}
+	// Map path to environment
+	rowEnvMap := map[string]gridNodeEnvs{}
+
+	for ck, cv := range g.cells {
+		cv.mapNodes()
+		for p, n := range cv.nodeMap {
+			pathMap[p] = true
+
+			if envs, ok := rowEnvMap[p]; !ok {
+				envs = gridNodeEnvs{
+					first: &n,
+					nodes: map[string]*gridNode{
+						ck: &n,
+					},
+				}
+				rowEnvMap[p] = envs
+			} else {
+				envs.nodes[ck] = &n
+			}
+
+		}
+	}
+
+	var paths []string
+
+	for k, _ := range pathMap {
+		paths = append(paths, k)
+	}
+
+	slices.Sort(paths)
+
+	st := util.NewStack[[]*deploygrid.Component]()
+
+	var res []*deploygrid.Component
+	cur := &res
+	var prev *deploygrid.Component
+	prevPath := ""
+	st.Push(&res)
+
+	for _, path := range paths {
+
+		envs := rowEnvMap[path]
+		comp := &deploygrid.Component{
+			Name:          envs.first.simpleName,
+			ComponentType: envs.first.componentType,
+			Deployments: func() map[string]*deploygrid.Deployment {
+
+				ds := make(map[string]*deploygrid.Deployment)
+
+				for k, v := range envs.nodes {
+					ds[k] = &deploygrid.Deployment{
+						Version: v.version,
+					}
+				}
+
+				return ds
+			}(),
+		}
+		if prevPath != "" && prev != nil {
+			if strings.HasPrefix(path, prevPath) {
+				cur = &prev.Children
+				st.Push(cur)
+			} else {
+				cur = st.Pop()
+			}
+		}
+		*cur = append(*cur, comp)
+		prev = comp
+		prevPath = path
+	}
+
+	return res
 }
 
 func newGridRow(group string) *gridRow {
@@ -103,16 +190,18 @@ func newGridRow(group string) *gridRow {
 func buildGrid(grid *deploygrid.Grid, rows map[string]*gridRow) {
 
 	envs := map[string]bool{}
+	var comps []*deploygrid.Component
 
 	for _, rv := range rows {
-		for ck, cv := range rv.cells {
+		for ck, _ := range rv.cells {
 			envs[ck] = true
-			cv.mapNodes()
 		}
+		comps = append(comps, rv.expand()...)
 	}
 
+	grid.Components = comps
 	for k, _ := range envs {
-		grid.Environments = append(grid.Environments, deploygrid.Environment{
+		grid.Environments = append(grid.Environments, &deploygrid.Environment{
 			Name: k,
 		})
 	}

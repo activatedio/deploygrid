@@ -16,12 +16,17 @@ func TestE2E(t *testing.T) {
 
 		r := resty.New().SetBaseURL(baseURL)
 
-		g := &deploygrid.Grid{}
-		e := &ErrorResponse{}
+		a.EventuallyWithT(func(c *assert.CollectT) {
 
-		time.Sleep(5 * time.Second)
-		checkResp(json(r.R()).SetError(e).SetResult(g).Get("/grid"))
-		a.NotNil(g.Components)
+			g := &deploygrid.Grid{}
+			e := &ErrorResponse{}
+			resp, err := json(r.R()).SetError(e).SetResult(g).Get("/grid")
+			assert.Nil(c, err)
+			assert.True(c, resp.IsSuccess())
+			assert.Len(c, g.Components, 2)
+			assert.Len(c, g.Environments, 3)
+
+		}, 5*time.Second, time.Second)
 
 	})
 

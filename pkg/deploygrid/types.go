@@ -5,10 +5,10 @@ type Environment struct {
 }
 
 type Component struct {
-	Name          string                `json:"name"`
-	ComponentType string                `json:"component_type"`
-	Children      []Component           `json:"children"`
-	Deployments   map[string]Deployment `json:"deployments"`
+	Name          string                 `json:"name"`
+	ComponentType string                 `json:"component_type"`
+	Children      []*Component           `json:"children"`
+	Deployments   map[string]*Deployment `json:"deployments"`
 }
 
 type Deployment struct {
@@ -16,7 +16,7 @@ type Deployment struct {
 }
 
 type Grid struct {
-	Errors       []string      `json:"errors"`
-	Environments []Environment `json:"environments"`
-	Components   []Component   `json:"components"`
+	Errors       []string       `json:"errors"`
+	Environments []*Environment `json:"environments"`
+	Components   []*Component   `json:"components"`
 }

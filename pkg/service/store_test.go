@@ -104,7 +104,8 @@ func TestStore_Concurrency_AddModifyDelete(t *testing.T) {
 
 	reader := func(s *service.Store) {
 
-		d := s.GetData()
+		d, err := s.GetData()
+		util.Check(err)
 		if d == nil {
 			panic("data is nil")
 		}
@@ -148,7 +149,7 @@ func TestStore_Concurrency_AddModifyDelete(t *testing.T) {
 		}()
 	}
 
-	time.Sleep(20 * time.Second)
+	time.Sleep(5 * time.Second)
 	fmt.Println("cancelling")
 	cancel()
 	fmt.Println("waiting")
