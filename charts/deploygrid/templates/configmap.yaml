@@ -9,17 +9,18 @@ data:
   config.yaml: |-
     {{- if .Values.clusters }}
     clusters:
-      {{- range .Values.clusters }}
-      - name: {{ .name }}
-        {{- if .address }}
-        address: {{ .address }}
+      clusters:
+        {{- range .Values.clusters }}
+        - name: {{ .name }}
+          {{- if .address }}
+          address: {{ .address }}
+          {{- end }}
+          {{- if .local }}
+          local: true
+          {{- end }}
+          {{- if .kubeconfigSecretName }}
+          kubeConfigPath: /etc/clusters/{{ .name }}/config.yaml
+          {{- end }}
         {{- end }}
-        {{- if .local }}
-        local: true
-        {{- end }}
-        {{- if .kubeconfigSecretName }}
-        kubeConfigPath: /etc/clusters/{{ .name }}/config.yaml
-        {{- end }}
-      {{- end }}
     {{- end }}
 
