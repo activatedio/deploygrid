@@ -33,21 +33,22 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract Docker metadata
-        id: meta
+        id: meta-api
         uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
         with:
           flavor: |
             latest=false
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-arm64
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api-arm64
 
       - name: Build and push Docker image
+        working-directory: ./api
         id: build-and-push-amd64
         uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta-api.outputs.tags }}
+          labels: ${{ steps.meta-api.outputs.labels }}
           cache-from: type=gha
           platforms: linux/arm64
           cache-to: type=gha,mode=max
@@ -66,25 +67,25 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Create k8s Kind Cluster
-        uses: helm/kind-action@v1
-        with:
-          cluster_name: kind
-          config: ./kind/kind-cluster.yaml
+        working-directory: ./api
+        run: |
+          ./kind/setup.sh
 
       - name: Extract Docker metadata
-        id: meta
+        id: meta-api
         uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
         with:
           flavor: |
             latest=false
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-amd64
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api-amd64
 
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.24.2'
+          go-version: '1.24.3'
 
       - name: Test
+        working-directory: ./api
         run: |
           go test -v ./...
 
@@ -100,13 +101,14 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push Docker image
+        working-directory: ./api
         id: build-and-push-amd64
         uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta-api.outputs.tags }}
+          labels: ${{ steps.meta-api.outputs.labels }}
           cache-from: type=gha
           platforms: linux/amd64
           cache-to: type=gha,mode=max
@@ -121,7 +123,7 @@ jobs:
           helm package ./charts/deploygrid --version $VERSION
           helm push ./deploygrid-$VERSION.tgz oci://$REPOSITORY
   
-  create-manifests:
+  create-manifests-api:
 
     runs-on: [ custom-ubuntu-24.04 ]
     needs: [deploy-amd64, deploy-arm64]
@@ -141,23 +143,23 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract Docker metadata
-        id: meta-arm64
+        id: meta-api-arm64
         uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
         with:
           flavor: |
             latest=false
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-arm64
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api-arm64
 
       - name: Extract Docker metadata
-        id: meta-amd64
+        id: meta-api-amd64
         uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
         with:
           flavor: |
             latest=false
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-amd64
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api-amd64
 
       - name: Extract Docker metadata
-        id: meta
+        id: meta-api
         uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
         with:
           flavor: |
@@ -168,8 +170,8 @@ jobs:
         run: |
           docker manifest create \
             ${{ steps.meta.outputs.tags }} \
-            --amend ${{ steps.meta-arm64.outputs.tags }} \
-            --amend ${{ steps.meta-amd64.outputs.tags }} && \
-          docker manifest push ${{ steps.meta.outputs.tags }}
+            --amend ${{ steps.meta-api-arm64.outputs.tags }} \
+            --amend ${{ steps.meta-api-amd64.outputs.tags }} && \
+          docker manifest push ${{ steps.meta-api.outputs.tags }}
 
 
