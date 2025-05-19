@@ -20,7 +20,7 @@ func json(r *resty.Request) *resty.Request {
 func waitForHealth(url string) {
 
 	for i := 0; i < 30; i++ {
-		resp, err := resty.New().SetBaseURL(url).R().Get("/healthz")
+		resp, err := resty.New().SetBaseURL(url).R().Get("/api/healthz")
 		if err == nil && resp.IsSuccess() {
 			return
 		}

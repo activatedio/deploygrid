@@ -5,9 +5,7 @@ metadata:
   labels:
     {{- include "deploygrid.labels" . | nindent 4 }}
 spec:
-  {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
-  {{- end }}
   selector:
     matchLabels:
       {{- include "deploygrid.selectorLabels" . | nindent 6 }}
@@ -31,29 +29,67 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
-        - name: {{ .Chart.Name }}
+        - name: {{ .Chart.Name }}-api
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          env:
+            name: CONFIG_PATH
+            value: /etc/deploygrid/config.yaml
           ports:
-            - name: http
-              containerPort: {{ .Values.service.port }}
+            - name: http-api
+              containerPort: 8080
               protocol: TCP
           livenessProbe:
-            {{- toYaml .Values.livenessProbe | nindent 12 }}
+            httpGet:
+              path: /api/healthz
+              port: http-api
           readinessProbe:
-            {{- toYaml .Values.readinessProbe | nindent 12 }}
+            httpGet:
+              path: /api/healthz
+              port: http-api
+          volumeMounts:
+            - name: config
+              mountPath: "/etc/deploygrid"
+          {{- with .Values.clusters }}
+          {{- if .kubeconfigSecretName }}
+          - name: cluster-{{ .name }}
+            mountPath: "/etc/clusters/{{ .name }}"
+          {{- end }}
+          {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-          {{- with .Values.volumeMounts }}
-          volumeMounts:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-      {{- with .Values.volumes }}
+        - name: {{ .Chart.Name }}-ui
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.ui.image.repository }}:{{ .Values.api.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.ui.image.pullPolicy }}
+          ports:
+            - name: http-ui
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http-ui
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http-ui
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
       volumes:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+        - name: config
+          configMap:
+            name: {{ include "deploygrid.fullname" . }}
+        {{- with .Values.clusters }}
+        {{- if .kubeconfigSecretName }}
+        - name: cluster-{{ .name }}
+          secret:
+            secretName: {{ .kubeconfigSecretName }}
+        {{- end }}
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

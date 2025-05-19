@@ -7,9 +7,13 @@ metadata:
 spec:
   type: {{ .Values.service.type }}
   ports:
-    - port: {{ .Values.service.port }}
-      targetPort: http
+    - port: {{ .Values.api.service.port }}
+      targetPort: 8080
       protocol: TCP
-      name: http
+      name: http-api
+    - port: {{ .Values.ui.service.port }}
+      targetPort: 80
+      protocol: TCP
+      name: http-ui
   selector:
     {{- include "deploygrid.selectorLabels" . | nindent 4 }}

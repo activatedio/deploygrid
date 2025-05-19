@@ -20,7 +20,7 @@ func TestE2E(t *testing.T) {
 
 			g := &deploygrid.Grid{}
 			e := &ErrorResponse{}
-			resp, err := json(r.R()).SetError(e).SetResult(g).Get("/grid")
+			resp, err := json(r.R()).SetError(e).SetResult(g).Get("/api/grid")
 			assert.Nil(c, err)
 			assert.True(c, resp.IsSuccess())
 			assert.Len(c, g.Components, 2)

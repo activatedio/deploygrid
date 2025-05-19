@@ -18,13 +18,13 @@ type RouterParams struct {
 func NewRouter(params RouterParams) *mux.Router {
 
 	var (
-		SwaggerUIPathPrefix = "/swagger-ui"
+		SwaggerUIPathPrefix = "/api/swagger-ui"
 	)
 
 	r := mux.NewRouter()
 
-	r.HandleFunc("/healthz", params.Health.Healthz).Methods(http.MethodGet)
-	r.HandleFunc("/grid", params.Grid.Get).Methods(http.MethodGet)
+	r.HandleFunc("/api/healthz", params.Health.Healthz).Methods(http.MethodGet)
+	r.HandleFunc("/api/grid", params.Grid.Get).Methods(http.MethodGet)
 
 	_su := params.SwaggerConfig.SwaggerUiUrl
 
