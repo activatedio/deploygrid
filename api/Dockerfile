@@ -12,12 +12,12 @@ COPY cmd ./cmd
 RUN CGO_ENABLED=0 GOOS=linux go build -o /deploygrid ./cmd/main
 
 # Deploy the application binary into a lean image
-FROM gcr.io/distroless/base-debian11 AS build-release-stage
+FROM debian:bookworm AS build-release-stage
+
+RUN apt-get update && apt-get install -y awscli && rm -rf /var/cache/apt/archives /var/lib/apt/lists/*
 
 WORKDIR /
 
 COPY --from=build-stage /deploygrid /usr/bin/deploygrid
-
-USER nonroot:nonroot
 
 ENTRYPOINT ["/usr/bin/deploygrid"]
