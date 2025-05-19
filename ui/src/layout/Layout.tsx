@@ -7,7 +7,7 @@ interface LayoutProps {
 function Layout({children}: LayoutProps) {
     return <>
         <div className="bg-slate-100 h-20 flex items-center p-2 px-8 gap-4">
-            <h3 className="text-2xl font-semibold text-slate-600">Strata</h3>
+            <h3 className="text-2xl font-semibold text-slate-600">DeployGrid</h3>
         </div>
         <div className="flex justify-center pt-8 container m-auto">
             {children}
