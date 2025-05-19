@@ -113,7 +113,7 @@ func (s *Store) Add(in *repository.Resource) error {
 
 func (s *Store) addNoLock(in *repository.Resource) error {
 
-	log.Info().Interface("resource", in).Msg("adding to store")
+	log.Debug().Interface("resource", in).Msg("adding to store")
 
 	s.data.entries[in.Name] = in
 
@@ -132,7 +132,7 @@ func (s *Store) Modify(in *repository.Resource) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	log.Info().Interface("resource", in).Msg("modifying in store")
+	log.Debug().Interface("resource", in).Msg("modifying in store")
 
 	if existing, ok := s.data.entries[in.Name]; ok && existing.Parent != in.Parent {
 		return errors.New("cannot modify parent")
@@ -150,7 +150,7 @@ func (s *Store) Delete(in *repository.Resource) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	log.Info().Interface("resource", in).Msg("deleting from store")
+	log.Debug().Interface("resource", in).Msg("deleting from store")
 
 	if existing, ok := s.data.entries[in.Name]; ok && existing.Parent != in.Parent {
 		return errors.New("cannot modify parent")
@@ -171,7 +171,7 @@ func (s *Store) Replace(in []*repository.Resource) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	log.Info().Interface("resources", in).Msg("replacing store")
+	log.Debug().Interface("resources", in).Msg("replacing store")
 
 	s.init()
 

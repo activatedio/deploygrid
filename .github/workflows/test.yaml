@@ -20,11 +20,13 @@ jobs:
       working-directory: ./api
       run: |
         ./kind/setup.sh
+      post: |
+        ./kind/teardown.sh
 
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.24.2'
+        go-version: '1.24.3'
 
     - name: Test
       working-directory: ./api
