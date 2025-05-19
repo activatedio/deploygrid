@@ -26,7 +26,7 @@ func NewRouter(params RouterParams) *mux.Router {
 	r.HandleFunc("/healthz", params.Health.Healthz).Methods(http.MethodGet)
 	r.HandleFunc("/grid", params.Grid.Get).Methods(http.MethodGet)
 
-	_su := params.SwaggerConfig.SwaggerUIURL
+	_su := params.SwaggerConfig.SwaggerUiUrl
 
 	if _su != "" {
 		su, err := url.Parse(_su)

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
+	"github.com/activatedio/deploygrid/pkg/apiinfra/zerolog"
+	"github.com/activatedio/deploygrid/pkg/config"
 	"github.com/activatedio/deploygrid/pkg/repository"
 	"github.com/activatedio/deploygrid/pkg/service"
 	"github.com/google/uuid"
@@ -11,6 +13,13 @@ import (
 	"testing"
 	"time"
 )
+
+func init() {
+	zerolog.ConfigureLogging(&config.LoggingConfig{
+		Level:   "info",
+		DevMode: false,
+	})
+}
 
 func randomString() string {
 	return uuid.New().String()

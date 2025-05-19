@@ -32,8 +32,8 @@ func NewViper(opts ...Option) *viper.Viper {
 	}
 
 	v := viper.New()
-	v.AutomaticEnv()
 	v.SetEnvKeyReplacer(strings.NewReplacer(`.`, `_`))
+	v.AutomaticEnv()
 
 	if o.configPath == "" {
 		o.configPath = os.Getenv(KeyConfigPath)

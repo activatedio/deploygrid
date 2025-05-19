@@ -1,23 +1,23 @@
 package config
 
 type LoggingConfig struct {
-	Level   string
-	DevMode bool
+	Level   string `mapstructure:"level"`
+	DevMode bool   `mapstructure:"devMode"`
 }
 
 type ClusterConfig struct {
-	Name           string
-	Address        string
-	KubeConfigPath string
-	ContextName    string
+	Name           string `mapstructure:"name"`
+	Address        string `mapstructure:"address"`
+	KubeConfigPath string `mapstructure:"kubeConfigPath"`
+	ContextName    string `mapstructure:"contextName"`
 }
 
 type ClustersConfig struct {
-	Clusters []ClusterConfig
+	Clusters []ClusterConfig `mapstructure:"clusters"`
 }
 
 type SwaggerConfig struct {
-	SwaggerUIURL string
+	SwaggerUiUrl string `mapstructure:"swaggerUiUrl"`
 }
 
 type ServerConfig struct {

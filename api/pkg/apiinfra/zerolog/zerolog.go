@@ -17,6 +17,7 @@ func ConfigureLogging(config *config.LoggingConfig) {
 		log.Logger = log.Output(&zerolog.ConsoleWriter{Out: os.Stdout})
 	} else {
 		if lvl := config.Level; lvl != "" {
+			fmt.Println("Setting logging level: " + lvl)
 			l, err := zerolog.ParseLevel(lvl)
 			util.Check(err)
 			zerolog.SetGlobalLevel(l)

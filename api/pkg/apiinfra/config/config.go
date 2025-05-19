@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/viper"
 	"os"
 	"reflect"
+	"regexp"
 	"strings"
 	"sync"
 )
@@ -56,9 +57,15 @@ func wrapError[T any](in T, key string, err error) error {
 }
 
 var (
-	prefixCache = map[string]bool{}
-	prefixLock  = sync.Mutex{}
+	prefixCache     = map[string]bool{}
+	prefixLock      = sync.Mutex{}
+	prefixUpperCase = regexp.MustCompile("([A-Z])")
 )
+
+func UpperUnderscore(s string) string {
+	s = prefixUpperCase.ReplaceAllString(s, "_${1}")
+	return strings.ReplaceAll(strings.ToUpper(s), ".", "_")
+}
 
 func bindEnvs[T any](v *viper.Viper, key string, in T) {
 
@@ -69,15 +76,11 @@ func bindEnvs[T any](v *viper.Viper, key string, in T) {
 		return
 	}
 
-	upperUnderscore := func(s string) string {
-		return strings.ReplaceAll(strings.ToUpper(s), ".", "_")
-	}
-
-	upKey := upperUnderscore(key)
+	upKey := UpperUnderscore(key)
 
 	for _, _key := range getAllKeys(in) {
 
-		_upKey := upperUnderscore(_key)
+		_upKey := UpperUnderscore(_key)
 		var envKey string
 		if key != "" {
 			envKey = fmt.Sprintf("%s_%s", upKey, _upKey)

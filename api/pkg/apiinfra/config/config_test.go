@@ -20,6 +20,35 @@ func (d *Dummy) DoValidate() error {
 	return nil
 }
 
+func TestUpperUnderscore(t *testing.T) {
+
+	type s struct {
+		input    string
+		expected string
+	}
+
+	cases := map[string]s{
+		"simple": {
+			input:    "simple",
+			expected: "SIMPLE",
+		},
+		"full": {
+			input:    "testValue",
+			expected: "TEST_VALUE",
+		},
+		"full two": {
+			input:    "testSomethingElse",
+			expected: "TEST_SOMETHING_ELSE",
+		},
+	}
+
+	for k, v := range cases {
+		t.Run(k, func(t *testing.T) {
+			assert.Equal(t, v.expected, config.UpperUnderscore(v.input))
+		})
+	}
+}
+
 func TestMustUnmarshallAndValidate(t *testing.T) {
 
 	a := assert.New(t)
