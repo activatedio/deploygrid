@@ -35,8 +35,8 @@ spec:
           image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.api.image.pullPolicy }}
           env:
-            name: CONFIG_PATH
-            value: /etc/deploygrid/config.yaml
+            - name: CONFIG_PATH
+              value: /etc/deploygrid/config.yaml
           ports:
             - name: http-api
               containerPort: 8080
