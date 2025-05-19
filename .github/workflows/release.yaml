@@ -32,7 +32,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract Docker metadata
+      - name: Extract Docker metadata - api
         id: meta-api
         uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
         with:
@@ -40,7 +40,7 @@ jobs:
             latest=false
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api-arm64
 
-      - name: Build and push Docker image
+      - name: Build and push Docker image - api
         id: build-and-push-amd64
         uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
         with:
@@ -49,6 +49,29 @@ jobs:
           push: true
           tags: ${{ steps.meta-api.outputs.tags }}
           labels: ${{ steps.meta-api.outputs.labels }}
+          cache-from: type=gha
+          platforms: linux/arm64
+          cache-to: type=gha,mode=max
+          provenance: false
+          build-args: GIT_OAUTH_TOKEN=${{ secrets.GH_BUILD_PAT }}
+
+      - name: Extract Docker metadata - ui
+        id: meta-ui
+        uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
+        with:
+          flavor: |
+            latest=false
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-ui-arm64
+
+      - name: Build and push Docker image - ui
+        id: build-and-push-amd64
+        uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
+        with:
+          file: ./ui/Dockerfile
+          context: ./ui
+          push: true
+          tags: ${{ steps.meta-ui.outputs.tags }}
+          labels: ${{ steps.meta-ui.outputs.labels }}
           cache-from: type=gha
           platforms: linux/arm64
           cache-to: type=gha,mode=max
@@ -66,13 +89,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Extract Docker metadata
+      - name: Extract Docker metadata - api
         id: meta-api
         uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
         with:
           flavor: |
             latest=false
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api-amd64
+
+      - name: Extract Docker metadata - ui
+        id: meta-ui
+        uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
+        with:
+          flavor: |
+            latest=false
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-ui-amd64
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226 # v3.0.0
@@ -94,6 +125,21 @@ jobs:
           push: true
           tags: ${{ steps.meta-api.outputs.tags }}
           labels: ${{ steps.meta-api.outputs.labels }}
+          cache-from: type=gha
+          platforms: linux/amd64
+          cache-to: type=gha,mode=max
+          provenance: false
+          build-args: GIT_OAUTH_TOKEN=${{ secrets.GH_BUILD_PAT }}
+
+      - name: Build and push Docker image
+        id: build-and-push-amd64
+        uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
+        with:
+          file: ./ui/Dockerfile
+          context: ./ui
+          push: true
+          tags: ${{ steps.meta-ui.outputs.tags }}
+          labels: ${{ steps.meta-ui.outputs.labels }}
           cache-from: type=gha
           platforms: linux/amd64
           cache-to: type=gha,mode=max
@@ -127,7 +173,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract Docker metadata
+      - name: Extract Docker metadata - api
         id: meta-api-arm64
         uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
         with:
@@ -135,7 +181,7 @@ jobs:
             latest=false
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api-arm64
 
-      - name: Extract Docker metadata
+      - name: Extract Docker metadata - api
         id: meta-api-amd64
         uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
         with:
@@ -143,7 +189,7 @@ jobs:
             latest=false
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api-amd64
 
-      - name: Extract Docker metadata
+      - name: Extract Docker metadata - api
         id: meta-api
         uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
         with:
@@ -151,7 +197,7 @@ jobs:
             latest=false
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api
 
-      - name: Create manifest and push
+      - name: Create manifest and push - api
         run: |
           docker manifest create \
             ${{ steps.meta-api.outputs.tags }} \
@@ -159,4 +205,35 @@ jobs:
             --amend ${{ steps.meta-api-amd64.outputs.tags }} && \
           docker manifest push ${{ steps.meta-api.outputs.tags }}
 
+      - name: Extract Docker metadata - ui
+        id: meta-ui-arm64
+        uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
+        with:
+          flavor: |
+            latest=false
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-ui-arm64
+
+      - name: Extract Docker metadata - ui
+        id: meta-ui-amd64
+        uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
+        with:
+          flavor: |
+            latest=false
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-ui-amd64
+
+      - name: Extract Docker metadata - ui
+        id: meta-ui
+        uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
+        with:
+          flavor: |
+            latest=false
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-ui
+
+      - name: Create manifest and push - ui
+        run: |
+          docker manifest create \
+            ${{ steps.meta-ui.outputs.tags }} \
+            --amend ${{ steps.meta-ui-arm64.outputs.tags }} \
+            --amend ${{ steps.meta-ui-amd64.outputs.tags }} && \
+          docker manifest push ${{ steps.meta-ui.outputs.tags }}
 
