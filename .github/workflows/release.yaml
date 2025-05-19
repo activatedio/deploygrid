@@ -44,8 +44,8 @@ jobs:
         id: build-and-push-amd64
         uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
         with:
-          working-directory: ./api
-          context: .
+          file: ./api/Dockerfile
+          context: ./api
           push: true
           tags: ${{ steps.meta-api.outputs.tags }}
           labels: ${{ steps.meta-api.outputs.labels }}
@@ -87,7 +87,7 @@ jobs:
       - name: Test
         working-directory: ./api
         run: |
-          go test -v ./...
+          LOGGING_LEVEL=info go test -v ./...
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226 # v3.0.0
@@ -104,8 +104,8 @@ jobs:
         id: build-and-push-amd64
         uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
         with:
-          working-directory: ./api
-          context: .
+          file: ./api/Dockerfile
+          context: ./api
           push: true
           tags: ${{ steps.meta-api.outputs.tags }}
           labels: ${{ steps.meta-api.outputs.labels }}

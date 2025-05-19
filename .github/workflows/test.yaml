@@ -29,5 +29,5 @@ jobs:
     - name: Test
       working-directory: ./api
       run: |
-        go test -v ./...
+        LOGGING_LEVEL=info go test -v ./...
 
