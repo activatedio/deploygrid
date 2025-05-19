@@ -66,11 +66,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Create k8s Kind Cluster
-        working-directory: ./api
-        run: |
-          ./kind/setup.sh
-
       - name: Extract Docker metadata
         id: meta-api
         uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
@@ -78,16 +73,6 @@ jobs:
           flavor: |
             latest=false
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api-amd64
-
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: '1.24.3'
-
-      - name: Test
-        working-directory: ./api
-        run: |
-          LOGGING_LEVEL=info go test -v ./...
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226 # v3.0.0
@@ -164,12 +149,12 @@ jobs:
         with:
           flavor: |
             latest=false
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api
 
       - name: Create manifest and push
         run: |
           docker manifest create \
-            ${{ steps.meta.outputs.tags }} \
+            ${{ steps.meta-api.outputs.tags }} \
             --amend ${{ steps.meta-api-arm64.outputs.tags }} \
             --amend ${{ steps.meta-api-amd64.outputs.tags }} && \
           docker manifest push ${{ steps.meta-api.outputs.tags }}

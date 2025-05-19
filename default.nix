@@ -4,6 +4,7 @@ stdenv.mkDerivation {
 
   name = "deploygrid";
   buildInputs = with pkgs; [
+    nodejs_18
     go
     gnumake
     kind
