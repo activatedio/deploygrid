@@ -10,7 +10,7 @@ env:
 
 jobs:
 
-  deploy-arm64:
+  deploy-arm64-api:
     runs-on: custom-ubuntu-24.04-arm
     permissions:
       contents: read
@@ -32,7 +32,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract Docker metadata - api
+      - name: Extract Docker metadata
         id: meta-api
         uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
         with:
@@ -40,7 +40,7 @@ jobs:
             latest=false
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api-arm64
 
-      - name: Build and push Docker image - api
+      - name: Build and push Docker image
         id: build-and-push-amd64
         uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
         with:
@@ -55,7 +55,29 @@ jobs:
           provenance: false
           build-args: GIT_OAUTH_TOKEN=${{ secrets.GH_BUILD_PAT }}
 
-      - name: Extract Docker metadata - ui
+  deploy-arm64-ui:
+    runs-on: custom-ubuntu-24.04-arm
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226 # v3.0.0
+
+      - name: Log into registry ${{ env.REGISTRY }}
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d # v3.0.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
         id: meta-ui
         uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
         with:
@@ -63,7 +85,7 @@ jobs:
             latest=false
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-ui-arm64
 
-      - name: Build and push Docker image - ui
+      - name: Build and push Docker image
         id: build-and-push-amd64
         uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
         with:
@@ -78,7 +100,7 @@ jobs:
           provenance: false
           build-args: GIT_OAUTH_TOKEN=${{ secrets.GH_BUILD_PAT }}
 
-  deploy-amd64:
+  deploy-amd64-api:
     runs-on: custom-ubuntu-24.04
     permissions:
       contents: read
@@ -89,7 +111,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Extract Docker metadata - api
+      - name: Extract Docker metadata
         id: meta-api
         uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
         with:
@@ -97,7 +119,52 @@ jobs:
             latest=false
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api-amd64
 
-      - name: Extract Docker metadata - ui
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226 # v3.0.0
+
+      - name: Log into registry ${{ env.REGISTRY }}
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d # v3.0.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        id: build-and-push-amd64
+        uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
+        with:
+          file: ./api/Dockerfile
+          context: ./api
+          push: true
+          tags: ${{ steps.meta-api.outputs.tags }}
+          labels: ${{ steps.meta-api.outputs.labels }}
+          cache-from: type=gha
+          platforms: linux/amd64
+          cache-to: type=gha,mode=max
+          provenance: false
+          build-args: GIT_OAUTH_TOKEN=${{ secrets.GH_BUILD_PAT }}
+
+      - name: Package and push helm chart
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          REPOSITORY=ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')
+          sed -i "s/v0\.0\.0/v${VERSION}/g" ./charts/deploygrid/values.yaml
+          helm package ./charts/deploygrid --version $VERSION
+          helm push ./deploygrid-$VERSION.tgz oci://$REPOSITORY
+  
+  deploy-amd64-ui:
+    runs-on: custom-ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract Docker metadata
         id: meta-ui
         uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
         with:
@@ -120,21 +187,6 @@ jobs:
         id: build-and-push-amd64
         uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
         with:
-          file: ./api/Dockerfile
-          context: ./api
-          push: true
-          tags: ${{ steps.meta-api.outputs.tags }}
-          labels: ${{ steps.meta-api.outputs.labels }}
-          cache-from: type=gha
-          platforms: linux/amd64
-          cache-to: type=gha,mode=max
-          provenance: false
-          build-args: GIT_OAUTH_TOKEN=${{ secrets.GH_BUILD_PAT }}
-
-      - name: Build and push Docker image
-        id: build-and-push-amd64
-        uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
-        with:
           file: ./ui/Dockerfile
           context: ./ui
           push: true
@@ -145,19 +197,11 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: false
           build-args: GIT_OAUTH_TOKEN=${{ secrets.GH_BUILD_PAT }}
-
-      - name: Package and push helm chart
-        run: |
-          VERSION=${GITHUB_REF_NAME#v}
-          REPOSITORY=ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')
-          sed -i "s/v0\.0\.0/v${VERSION}/g" ./charts/deploygrid/values.yaml
-          helm package ./charts/deploygrid --version $VERSION
-          helm push ./deploygrid-$VERSION.tgz oci://$REPOSITORY
   
-  create-manifests-api:
+  create-manifests:
 
     runs-on: [ custom-ubuntu-24.04 ]
-    needs: [deploy-amd64, deploy-arm64]
+    needs: [deploy-amd64-api, deploy-arm64-api, deploy-amd64-ui, deploy-arm64-ui]
 
     steps:
       - uses: actions/checkout@v3
@@ -236,4 +280,3 @@ jobs:
             --amend ${{ steps.meta-ui-arm64.outputs.tags }} \
             --amend ${{ steps.meta-ui-amd64.outputs.tags }} && \
           docker manifest push ${{ steps.meta-ui.outputs.tags }}
-
