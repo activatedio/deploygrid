@@ -37,6 +37,8 @@ spec:
           env:
             - name: CONFIG_PATH
               value: /etc/deploygrid/config.yaml
+            - name: SERVER_HOST
+              value: 0.0.0.0
           ports:
             - name: http-api
               containerPort: 8080

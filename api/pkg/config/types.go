@@ -22,6 +22,6 @@ type SwaggerConfig struct {
 }
 
 type ServerConfig struct {
-	Host string
-	Port int
+	Host string `mapstructure:"host"`
+	Port int    `mapstructure:"port"`
 }
