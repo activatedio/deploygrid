@@ -2,16 +2,18 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "deploygird.fullname" . }}
+  name: {{ include "deploygrid.fullname" . }}
   labels:
-    {{- include "deploygird.labels" . | nindent 4 }}
+    {{- include "deploygrid.labels" . | nindent 4 }}
 data:
   config.yaml: |-
     {{- if .Values.clusters }}
     clusters:
-      {{- with .Values.clusters }}
+      {{- range .Values.clusters }}
       - name: {{ .name }}
+        {{- if .address }}
         address: {{ .address }}
+        {{- end }}
         {{- if .local }}
         local: true
         {{- end }}

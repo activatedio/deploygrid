@@ -336,7 +336,11 @@ func NewGridService(params GridServiceParams) GridService {
 	addressMap := map[string]string{}
 
 	for _, cc := range params.ClustersConfig.Clusters {
-		addressMap[cc.Address] = cc.Name
+		if cc.Local {
+			addressMap["https://kubernetes.default.svc"] = cc.Name
+		} else {
+			addressMap[cc.Address] = cc.Name
+		}
 	}
 	return &gridService{
 		accessor:   params.Accessor,

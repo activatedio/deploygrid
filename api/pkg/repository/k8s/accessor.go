@@ -9,6 +9,7 @@ import (
 	"github.com/sony/gobreaker/v2"
 	"go.uber.org/fx"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"sync"
 )
@@ -21,7 +22,7 @@ type cluster struct {
 type resourceRepositoryClusterAwareAccessor struct {
 	clusterNames []string
 	clusters     map[string]cluster
-	repositoires map[string]*repository.Resources
+	repositories map[string]*repository.Resources
 	lock         sync.Mutex
 }
 
@@ -34,7 +35,7 @@ func (c *resourceRepositoryClusterAwareAccessor) Get(ctx context.Context, cluste
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	if r, ok := c.repositoires[clusterName]; ok {
+	if r, ok := c.repositories[clusterName]; ok {
 		return r, nil
 	}
 
@@ -46,7 +47,14 @@ func (c *resourceRepositoryClusterAwareAccessor) Get(ctx context.Context, cluste
 
 	r, err := cl.cb.Execute(func() (*repository.Resources, error) {
 
-		cfg, err := clientcmd.BuildConfigFromFlags("", cl.config.KubeConfigPath)
+		var cfg *rest.Config
+		var err error
+
+		if cl.config.Local {
+			cfg, err = rest.InClusterConfig()
+		} else {
+			cfg, err = clientcmd.BuildConfigFromFlags("", cl.config.KubeConfigPath)
+		}
 
 		if err != nil {
 			return nil, err
@@ -65,7 +73,7 @@ func (c *resourceRepositoryClusterAwareAccessor) Get(ctx context.Context, cluste
 		return nil, err
 	}
 
-	c.repositoires[clusterName] = r
+	c.repositories[clusterName] = r
 
 	return r, nil
 }
@@ -93,6 +101,6 @@ func NewResourceRepositoryClusterAwareAccessor(params ResourceRepositoryClusterA
 	return &resourceRepositoryClusterAwareAccessor{
 		clusterNames: clusterNames,
 		clusters:     clusters,
-		repositoires: map[string]*repository.Resources{},
+		repositories: map[string]*repository.Resources{},
 	}
 }

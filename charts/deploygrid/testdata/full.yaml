@@ -1,0 +1,37 @@
+service:
+  type: NodePort
+
+api:
+  image:
+    tag: "v0.0.8"
+
+ui:
+  image:
+    tag: "v0.0.9"
+
+clusters:
+  - name: cluster1
+    kubeconfigSecretName: cluster1-secret
+    address: https://localhost:8080
+  - name: local
+    local: true
+ 
+fullnameOverride: "deploygrid"
+
+serviceAccount: 
+  name: deploygrid
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::759963604796:role/DeployGrid
+
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/load-balancer-name: ops
+    alb.ingress.kubernetes.io/group.name: ops.default
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internal
+  host: deploygrid.somehost.com
+

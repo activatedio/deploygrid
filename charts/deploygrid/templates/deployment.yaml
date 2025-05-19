@@ -52,10 +52,10 @@ spec:
           volumeMounts:
             - name: config
               mountPath: "/etc/deploygrid"
-          {{- with .Values.clusters }}
+          {{- range .Values.clusters }}
           {{- if .kubeconfigSecretName }}
-          - name: cluster-{{ .name }}
-            mountPath: "/etc/clusters/{{ .name }}"
+            - name: cluster-{{ .name }}
+              mountPath: "/etc/clusters/{{ .name }}"
           {{- end }}
           {{- end }}
           resources:
@@ -83,7 +83,7 @@ spec:
         - name: config
           configMap:
             name: {{ include "deploygrid.fullname" . }}
-        {{- with .Values.clusters }}
+        {{- range .Values.clusters }}
         {{- if .kubeconfigSecretName }}
         - name: cluster-{{ .name }}
           secret:

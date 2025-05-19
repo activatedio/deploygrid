@@ -10,6 +10,7 @@ type ClusterConfig struct {
 	Address        string `mapstructure:"address"`
 	KubeConfigPath string `mapstructure:"kubeConfigPath"`
 	ContextName    string `mapstructure:"contextName"`
+	Local          bool   `mapstructure:"local"`
 }
 
 type ClustersConfig struct {
