@@ -1,8 +1,8 @@
 package service
 
 const (
-	LabelDeployGridGroup       = "deploygrid/group"
-	LabelDeployGridName        = "deploygrid/name"
-	LabelDeployGridEnvironment = "deploygrid/environment"
-	GroupNoGroup               = "Default Group"
+	AnnotationDeployGridGroup       = "deploygrid/group"
+	AnnotationDeployGridName        = "deploygrid/name"
+	AnnotationDeployGridEnvironment = "deploygrid/environment"
+	GroupNoGroup                    = "Default Group"
 )

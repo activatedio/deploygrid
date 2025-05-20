@@ -2,6 +2,10 @@
 logging:
   devMode: true
 clusters:
+  environments:
+    - Dev
+    - QA
+    - Stage
   clusters:
     - name: kind-ops-cluster-1
       address: https://127.0.0.1:6443

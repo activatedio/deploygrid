@@ -14,7 +14,8 @@ type ClusterConfig struct {
 }
 
 type ClustersConfig struct {
-	Clusters []ClusterConfig `mapstructure:"clusters"`
+	Clusters     []ClusterConfig `mapstructure:"clusters"`
+	Environments []string        `mapstructure:"environments"`
 }
 
 type SwaggerConfig struct {

@@ -37,8 +37,9 @@ func NewApplicationRepository(client dynamic.Interface) repository.ResourceRepos
 			simpleName := app.Spec.Source.Chart
 
 			return &repository.Resource{
-				Name:   ApplicationName(app.Name),
-				Labels: app.Labels,
+				Name:        ApplicationName(app.Name),
+				Labels:      app.Labels,
+				Annotations: app.Annotations,
 				Components: []repository.Component{
 					{
 						Name:        ApplicationName(app.Name),
@@ -110,10 +111,11 @@ func NewDeploymentRepository(client dynamic.Interface) repository.ResourceReposi
 			}
 
 			return &repository.Resource{
-				Name:       DeploymentName(dep.Namespace, dep.Name),
-				Labels:     dep.Labels,
-				Parent:     parent,
-				Components: comps,
+				Name:        DeploymentName(dep.Namespace, dep.Name),
+				Labels:      dep.Labels,
+				Annotations: dep.Annotations,
+				Parent:      parent,
+				Components:  comps,
 			}, nil
 		},
 	})

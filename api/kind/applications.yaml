@@ -11,7 +11,7 @@ kind: Application
 metadata:
   name: dev-app-a
   namespace: argocd
-  labels:
+  annotations:
     deploygrid/name: app-a
     deploygrid/environment: Dev
     deploygrid/group: Apps
@@ -30,7 +30,7 @@ kind: Application
 metadata:
   name: dev-app-b
   namespace: argocd
-  labels:
+  annotations:
     deploygrid/name: app-b
     deploygrid/environment: Dev
     deploygrid/group: Apps
@@ -49,7 +49,7 @@ kind: Application
 metadata:
   name: qa-app-a
   namespace: argocd
-  labels:
+  annotations:
     deploygrid/name: app-a
     deploygrid/environment: QA
     deploygrid/group: Apps
@@ -68,7 +68,7 @@ kind: Application
 metadata:
   name: qa-app-b
   namespace: argocd
-  labels:
+  annotations:
     deploygrid/name: app-b
     deploygrid/environment: QA
     deploygrid/group: Apps
@@ -87,7 +87,7 @@ kind: Application
 metadata:
   name: stage-app-a
   namespace: argocd
-  labels:
+  annotations:
     deploygrid/name: app-a
     deploygrid/environment: Stage
     deploygrid/group: Apps
@@ -106,7 +106,7 @@ kind: Application
 metadata:
   name: stage-app-b
   namespace: argocd
-  labels:
+  annotations:
     deploygrid/name: app-b
     deploygrid/environment: Stage
     deploygrid/group: Apps

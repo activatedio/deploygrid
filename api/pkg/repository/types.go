@@ -25,10 +25,11 @@ type ClusterLocation struct {
 }
 
 type Resource struct {
-	Name       string
-	Parent     string
-	Labels     map[string]string
-	Components []Component
+	Name        string
+	Parent      string
+	Labels      map[string]string
+	Annotations map[string]string
+	Components  []Component
 }
 
 type ResourceStore interface {

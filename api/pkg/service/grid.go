@@ -20,11 +20,12 @@ type resourcesOrError struct {
 }
 
 type gridService struct {
-	clusters   map[string]resourcesOrError
-	accessor   repository.ClusterAwareAccessor[*repository.Resources]
-	stores     map[string]stores
-	lock       sync.RWMutex
-	addressMap map[string]string
+	clusters     map[string]resourcesOrError
+	accessor     repository.ClusterAwareAccessor[*repository.Resources]
+	stores       map[string]stores
+	lock         sync.RWMutex
+	addressMap   map[string]string
+	environments []string
 }
 
 func (g *gridService) updateClusters(ctx context.Context) {
@@ -95,6 +96,7 @@ type gridRow struct {
 	level int
 	group string
 	cells map[string]*gridCell
+	name  string
 }
 
 func (g *gridRow) expand() []*deploygrid.Component {
@@ -106,9 +108,8 @@ func (g *gridRow) expand() []*deploygrid.Component {
 	}
 
 	type withParent struct {
-		parentPath  string
-		currentPath string
-		node        *[]*deploygrid.Component
+		parentPath string
+		node       *[]*deploygrid.Component
 	}
 
 	pathMap := map[string]bool{}
@@ -148,9 +149,8 @@ func (g *gridRow) expand() []*deploygrid.Component {
 	var res []*deploygrid.Component
 
 	cur := &withParent{
-		parentPath:  "",
-		currentPath: "",
-		node:        &res,
+		parentPath: "",
+		node:       &res,
 	}
 	st.Push(cur)
 
@@ -179,10 +179,10 @@ func (g *gridRow) expand() []*deploygrid.Component {
 		}
 
 		*cur.node = append(*cur.node, comp)
+		st.Push(cur)
 		cur = &withParent{
-			parentPath:  cur.currentPath,
-			currentPath: path,
-			node:        &comp.Children,
+			parentPath: path,
+			node:       &comp.Children,
 		}
 		st.Push(cur)
 	}
@@ -190,32 +190,71 @@ func (g *gridRow) expand() []*deploygrid.Component {
 	return res
 }
 
-func newGridRow(group string) *gridRow {
+func newGridRow(group string, name string) *gridRow {
 	return &gridRow{
+		name:  name,
 		group: group,
 		cells: map[string]*gridCell{},
 	}
 }
 
-func buildGrid(grid *deploygrid.Grid, rows map[string]*gridRow) {
+func buildGrid(grid *deploygrid.Grid, rows map[string]*gridRow, columns []string) {
 
 	envs := map[string]bool{}
-	var comps []*deploygrid.Component
+
+	var sorted []*gridRow
 
 	for _, rv := range rows {
+		sorted = append(sorted, rv)
+	}
+
+	slices.SortFunc(sorted, func(a, b *gridRow) int {
+		return strings.Compare(a.name, b.name)
+	})
+
+	grouped := map[string]*deploygrid.Component{}
+
+	for _, rv := range sorted {
 		for ck, _ := range rv.cells {
 			envs[ck] = true
 		}
-		comps = append(comps, rv.expand()...)
+
+		groupName := rv.group
+		if groupName == "" {
+			groupName = "Default"
+		}
+		comps := rv.expand()
+
+		if grp, ok := grouped[groupName]; ok {
+			grp.Children = append(grp.Children, comps...)
+		} else {
+			grp = &deploygrid.Component{
+				Name:          groupName,
+				ComponentType: "Group",
+				Children:      comps,
+			}
+			grouped[groupName] = grp
+		}
+
 	}
 
-	grid.Components = comps
-	for k, _ := range envs {
+	for _, c := range columns {
 		grid.Environments = append(grid.Environments, &deploygrid.Environment{
-			Name: k,
+			Name: c,
 		})
 	}
 
+	var comps []*deploygrid.Component
+
+	for _, v := range grouped {
+		comps = append(comps, v)
+	}
+
+	slices.SortFunc(comps, func(a, b *deploygrid.Component) int {
+		return strings.Compare(a.Name, b.Name)
+	})
+
+	grid.Components = comps
 }
 
 func (g *gridService) Init() {
@@ -263,40 +302,41 @@ func (g *gridService) Get(ctx context.Context) (*deploygrid.Grid, error) {
 	// TODO - first encountered group defines the group container - this should change
 	for _, v := range data {
 		for _, e := range v.entries {
-			group := e.Labels[LabelDeployGridGroup]
+			group := e.Annotations[AnnotationDeployGridGroup]
 
 			if group == "" {
 				group = GroupNoGroup
 			}
 
-			name, nameOk := e.Labels[LabelDeployGridName]
-			env, envOk := e.Labels[LabelDeployGridEnvironment]
+			name, nameOk := e.Annotations[AnnotationDeployGridName]
+			envs, envsOk := e.Annotations[AnnotationDeployGridEnvironment]
 
-			if nameOk && envOk && e.Parent == "" {
+			if nameOk && envsOk && e.Parent == "" {
 
 				row, ok := rowMap[name]
 				if !ok {
-					row = newGridRow(group)
+					row = newGridRow(group, name)
 					rowMap[name] = row
 				}
 
-				cell, ok := row.cells[env]
-				if !ok {
-					cell = newGridCell()
-					row.cells[env] = cell
-				}
+				for _, env := range strings.Split(envs, ",") {
+					cell, ok := row.cells[env]
+					if !ok {
+						cell = newGridCell()
+						row.cells[env] = cell
+					}
 
-				err := g.buildNodes(ctx, data, &cell.nodes, &e.Components)
-
-				if err != nil {
-					return nil, err
+					err := g.buildNodes(ctx, data, &cell.nodes, &e.Components)
+					if err != nil {
+						return nil, err
+					}
 				}
 
 			}
 		}
 	}
 
-	buildGrid(res, rowMap)
+	buildGrid(res, rowMap, g.environments)
 
 	return res, nil
 }
@@ -353,9 +393,10 @@ func NewGridService(params GridServiceParams) GridService {
 		}
 	}
 	return &gridService{
-		accessor:   params.Accessor,
-		addressMap: addressMap,
-		clusters:   map[string]resourcesOrError{},
-		stores:     map[string]stores{},
+		accessor:     params.Accessor,
+		addressMap:   addressMap,
+		environments: params.ClustersConfig.Environments,
+		clusters:     map[string]resourcesOrError{},
+		stores:       map[string]stores{},
 	}
 }
