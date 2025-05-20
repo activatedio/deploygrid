@@ -9,6 +9,10 @@ ui:
   image:
     tag: "v0.0.9"
 
+environments:
+  - Dev
+  - QA
+  - Stage
 clusters:
   - name: cluster1
     kubeconfigSecretName: cluster1-secret
