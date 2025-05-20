@@ -105,6 +105,12 @@ func (g *gridRow) expand() []*deploygrid.Component {
 		nodes map[string]*gridNode
 	}
 
+	type withParent struct {
+		parentPath  string
+		currentPath string
+		node        *[]*deploygrid.Component
+	}
+
 	pathMap := map[string]bool{}
 	// Map path to environment
 	rowEnvMap := map[string]gridNodeEnvs{}
@@ -137,13 +143,16 @@ func (g *gridRow) expand() []*deploygrid.Component {
 
 	slices.Sort(paths)
 
-	st := util.NewStack[[]*deploygrid.Component]()
+	st := util.NewStack[withParent]()
 
 	var res []*deploygrid.Component
-	cur := &res
-	var prev *deploygrid.Component
-	prevPath := ""
-	st.Push(&res)
+
+	cur := &withParent{
+		parentPath:  "",
+		currentPath: "",
+		node:        &res,
+	}
+	st.Push(cur)
 
 	for _, path := range paths {
 
@@ -164,17 +173,18 @@ func (g *gridRow) expand() []*deploygrid.Component {
 				return ds
 			}(),
 		}
-		if prevPath != "" && prev != nil {
-			if strings.HasPrefix(path, prevPath) {
-				cur = &prev.Children
-				st.Push(cur)
-			} else {
-				cur = st.Pop()
-			}
+
+		for cur.parentPath != "" && !strings.HasPrefix(path, cur.parentPath+"/") {
+			cur = st.Pop()
 		}
-		*cur = append(*cur, comp)
-		prev = comp
-		prevPath = path
+
+		*cur.node = append(*cur.node, comp)
+		cur = &withParent{
+			parentPath:  cur.currentPath,
+			currentPath: path,
+			node:        &comp.Children,
+		}
+		st.Push(cur)
 	}
 
 	return res
