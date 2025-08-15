@@ -23,7 +23,7 @@ jobs:
 
       - name: Lint
         uses: golangci/golangci-lint-action@v7
-        working-directory: ./api
         with:
           version: ${{ env.GOLANGCI_VERSION }}
+          working-directory: ./api
 
