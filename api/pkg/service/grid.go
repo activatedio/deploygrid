@@ -264,7 +264,7 @@ func (g *gridService) Init() {
 func (g *gridService) Get(ctx context.Context) (*deploygrid.Grid, error) {
 
 	// We do this first before we acquire a read lock
-	g.updateClusters(context.Background())
+	g.updateClusters(ctx)
 
 	g.lock.RLock()
 	defer g.lock.RUnlock()

@@ -2,6 +2,7 @@ package mux
 
 import (
 	"encoding/json"
+	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
 	"github.com/rs/zerolog/log"
 	"net/http"
 )
@@ -11,5 +12,5 @@ func HandleError(w http.ResponseWriter, r *http.Request, err error) {
 	w.Header().Set("Content-Type", "application/json;")
 	w.WriteHeader(http.StatusInternalServerError)
 	// TODO - let's make this better
-	json.NewEncoder(w).Encode(&Error{Error: err.Error()})
+	util.Check(json.NewEncoder(w).Encode(&Error{Error: err.Error()}))
 }

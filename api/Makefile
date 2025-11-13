@@ -17,4 +17,4 @@ test:
 	LOGGING_LEVEL=info go test ./...
 
 serve:
-	SWAGGER_SWAGGER_UI_URL=http://127.0.0.1:8081 REPOSITORY_COMMON_MODE=stub LOGGING_DEV_MODE=true go run ./cmd/main
+	SWAGGER_SWAGGER_UI_URL=http://127.0.0.1:8081 CONFIG_PATH=./testdata/config.yaml LOGGING_DEV_MODE=true go run ./cmd/main

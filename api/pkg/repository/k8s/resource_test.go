@@ -107,7 +107,7 @@ func TestResourceRepository_Watch(t *testing.T) {
 				}
 				util.Check(err)
 
-				_, err = opsCl.Resource(gvr).Create(context.Background(), ns, metav1.CreateOptions{})
+				_, err = opsCl.Resource(gvr).Create(ctx, ns, metav1.CreateOptions{})
 				util.Check(err)
 
 				assert.EventuallyWithT(t, func(c *assert.CollectT) {
@@ -125,7 +125,7 @@ func TestResourceRepository_Watch(t *testing.T) {
 
 				}, time.Second, 200*time.Millisecond)
 
-				err = opsCl.Resource(gvr).Delete(context.Background(), nsName, metav1.DeleteOptions{})
+				err = opsCl.Resource(gvr).Delete(ctx, nsName, metav1.DeleteOptions{})
 
 				assert.EventuallyWithT(t, func(c *assert.CollectT) {
 

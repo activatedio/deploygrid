@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/activatedio/deploygrid/pkg/config"
+	"github.com/go-errors/errors"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
@@ -43,7 +44,10 @@ func NewServer(router *mux.Router, serverConfig *config.ServerConfig, lifecycle 
 	lifecycle.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			go func() {
-				server.ListenAndServe()
+				err := server.ListenAndServe()
+				if !errors.Is(err, http.ErrServerClosed) {
+					panic(err)
+				}
 			}()
 			return nil
 		},

@@ -23,7 +23,7 @@ func TestE2E(t *testing.T) {
 			resp, err := json(r.R()).SetError(e).SetResult(g).Get("/api/grid")
 			assert.Nil(c, err)
 			assert.True(c, resp.IsSuccess())
-			assert.Len(c, g.Components, 2)
+			assert.Len(c, g.Components, 1)
 			assert.Len(c, g.Environments, 3)
 
 		}, 5*time.Second, time.Second)

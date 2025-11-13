@@ -1,6 +1,7 @@
 package mux
 
 import (
+	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
 	"github.com/gorilla/mux"
 	"github.com/swaggest/openapi-go/openapi3"
 	"net/http"
@@ -39,7 +40,7 @@ func (o *openapiImpl) Mount(router *mux.Router, builders ...OpenapiBuilder) erro
 
 	router.HandleFunc("/swagger.json", func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(out)
+		util.CheckWrite(w.Write(out))
 	}).Methods(http.MethodGet)
 
 	return nil

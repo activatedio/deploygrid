@@ -2,6 +2,7 @@ package controller
 
 import (
 	apiinframux "github.com/activatedio/deploygrid/pkg/apiinfra/mux"
+	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
 	"github.com/activatedio/deploygrid/pkg/deploygrid"
 	"github.com/activatedio/deploygrid/pkg/service"
 	"github.com/swaggest/openapi-go/openapi3"
@@ -38,7 +39,7 @@ func (d *grid) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(g)
+	util.Check(json.NewEncoder(w).Encode(g))
 }
 
 func NewGrid(gridService service.GridService) Grid {
