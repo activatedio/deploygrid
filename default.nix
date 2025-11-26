@@ -10,6 +10,7 @@ stdenv.mkDerivation {
     kind
     kubectl
     kubernetes-helm
+    kubebuilder
   ];
   hardeningDisable = [ "fortify" ];
   shellHook = ''
