@@ -13,8 +13,8 @@ type RouterParams struct {
 	fx.In
 	SwaggerConfig *config.SwaggerConfig
 	Grid          Grid
-	Metadata      Metadata
-	Health        Health
+	//Metadata      Metadata
+	Health Health
 }
 
 const (
@@ -34,8 +34,11 @@ func NewRouter(params RouterParams) *mux.Router {
 
 	r.HandleFunc(PathHealth, params.Health.Healthz).Methods(http.MethodGet)
 	r.HandleFunc(PathGrid, params.Grid.Get).Methods(http.MethodGet)
-	r.HandleFunc(PathMetadata, params.Metadata.Get).Methods(http.MethodGet)
-	r.HandleFunc(PathMetadata, params.Metadata.Post).Methods(http.MethodPost)
+	/*
+		r.HandleFunc(PathMetadata, params.Metadata.Get).Methods(http.MethodGet)
+		r.HandleFunc(PathMetadata, params.Metadata.Post).Methods(http.MethodPost)
+
+	*/
 
 	_su := params.SwaggerConfig.SwaggerUiUrl
 

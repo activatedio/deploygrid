@@ -3,17 +3,19 @@ package k8s_test
 import (
 	"context"
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
 	"github.com/activatedio/deploygrid/pkg/repository"
 	"github.com/activatedio/deploygrid/pkg/repository/k8s"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
-	"testing"
-	"time"
 )
 
 func TestResourceRepository_Watch(t *testing.T) {
@@ -90,7 +92,7 @@ func TestResourceRepository_Watch(t *testing.T) {
 
 					rec := store.GetRecords()
 
-					assert.Len(c, rec, 1)
+					require.Len(c, rec, 1)
 					assert.Equal(c, repository.ResourceStoreEventReplace, rec[0].EventType)
 					assert.Len(c, rec[0].ResourceArray, 6)
 
@@ -114,7 +116,7 @@ func TestResourceRepository_Watch(t *testing.T) {
 
 					rec := store.GetRecords()
 
-					assert.Len(c, rec, 2)
+					require.Len(c, rec, 2)
 					assert.Equal(c, repository.ResourceStoreEventAdd, rec[1].EventType)
 					assert.Equal(c, []repository.Component{
 						{
@@ -137,7 +139,7 @@ func TestResourceRepository_Watch(t *testing.T) {
 						return
 					}
 
-					assert.Len(c, rec, 5)
+					require.Len(c, rec, 5)
 					assert.Equal(c, repository.ResourceStoreEventModify, rec[2].EventType)
 					assert.Equal(c, repository.ResourceStoreEventModify, rec[3].EventType)
 					assert.Equal(c, repository.ResourceStoreEventDelete, rec[4].EventType)

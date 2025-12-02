@@ -1,9 +1,0 @@
-apiVersion: deploygrid.activated.io.activated.io/v1alpha1
-kind: Metadata
-metadata:
-  labels:
-    app.kubernetes.io/name: tmp
-    app.kubernetes.io/managed-by: kustomize
-  name: metadata-sample
-spec:
-  # TODO(user): Add fields here

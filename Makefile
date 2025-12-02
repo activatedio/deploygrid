@@ -28,14 +28,14 @@ help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 .PHONY: manifests
-manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+manifests: controller-gen
+	$(CONTROLLER_GEN) crd paths="./pkg/apis/..." output:crd:artifacts:config=crds
+	go run ./hack/crdgen --chart-name=deploygrid ./crds > ./charts/deploygrid/templates/crds.yaml
 
 .PHONY: generate
-generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
-	go run ./hack/crdgen --mode clean > crds/crds.yaml
-	go run ./hack/crdgen --mode helm --chart-name deploygrid > charts/deploygrid/templates/crds.yaml
+generate: controller-gen client-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
+	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./api/..."
+	$(CLIENT_GEN) --input="api/v1alpha1" --clientset-name="deploygrid" 
 
 fmt:
 	go install golang.org/x/tools/cmd/goimports@latest
@@ -76,10 +76,12 @@ $(LOCALBIN):
 
 ## Tool Binaries
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
+CLIENT_GEN ?= $(LOCALBIN)/client-gen
 GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
 
 ## Tool Versions
 CONTROLLER_TOOLS_VERSION ?= v0.16.4
+CODE_GENERATOR_VERSION ?= v0.34.2
 GOLANGCI_LINT_VERSION ?= v1.61.0
 
 .PHONY: controller-gen
@@ -91,6 +93,11 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
 $(GOLANGCI_LINT): $(LOCALBIN)
 	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
+
+.PHONY: client-gen
+client-gen: $(CLIENT_GEN) ## Download controller-gen locally if necessary.
+$(CLIENT_GEN): $(LOCALBIN)
+	$(call go-install-tool,$(CLIENT_GEN),k8s.io/code-generator/cmd/client-gen,$(CODE_GENERATOR_VERSION))
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary

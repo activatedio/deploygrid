@@ -1,11 +1,14 @@
 package e2e
 
 import (
-	"github.com/activatedio/deploygrid/pkg/deploygrid"
-	"github.com/go-resty/resty/v2"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/activatedio/deploygrid/pkg/deploygrid"
+	"github.com/go-resty/resty/v2"
+	"github.com/rs/zerolog/log"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestE2E(t *testing.T) {
@@ -21,10 +24,12 @@ func TestE2E(t *testing.T) {
 			g := &deploygrid.Grid{}
 			e := &ErrorResponse{}
 			resp, err := json(r.R()).SetError(e).SetResult(g).Get("/api/grid")
-			assert.Nil(c, err)
-			assert.True(c, resp.IsSuccess())
-			assert.Len(c, g.Components, 1)
-			assert.Len(c, g.Environments, 3)
+			require.NoError(c, err)
+			require.True(c, resp.IsSuccess())
+			require.Len(c, g.Components, 1)
+			require.Len(c, g.Environments, 3)
+
+			log.Info().Msg("test succeeded")
 
 		}, 5*time.Second, time.Second)
 

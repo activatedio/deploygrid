@@ -1,7 +1,0 @@
-## Append samples of your project ##
-resources:
-- deploygrid.activated.io_v1alpha1_environment.yaml
-- deploygrid.activated.io_v1alpha1_system.yaml
-- deploygrid.activated.io_v1alpha1_metadata.yaml
-- deploygrid.activated.io_v1alpha1_metadataview.yaml
-# +kubebuilder:scaffold:manifestskustomizesamples

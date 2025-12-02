@@ -46,12 +46,11 @@ func (s *StoreData) addAll(in *StoreData) {
 	}
 }
 
-// We map this by system name
 type Store struct {
 	err      error
 	lock     sync.RWMutex
-	data     map[string]*StoreData
-	snapshot map[string]*StoreData
+	data     *StoreData
+	snapshot *StoreData
 }
 
 func NewStore() *Store {
@@ -61,7 +60,7 @@ func NewStore() *Store {
 }
 
 func (s *Store) init() {
-	s.data = map[string]*StoreData{}
+	s.data = NewStoreData()
 	s.clearSnapshot()
 	s.clearError()
 }
@@ -74,22 +73,17 @@ func (s *Store) clearError() {
 	s.err = nil
 }
 
-func (s *Store) getParentMap(system, key string) (map[string]bool, error) {
-	data, sok := s.data[system]
-	if !sok {
-		return nil, errors.New("system not found")
-	}
-	if pm, ok := data.parentMap[key]; ok {
-		return pm, nil
+func (s *Store) getParentMap(key string) map[string]bool {
+	if pm, ok := s.data.parentMap[key]; ok {
+		return pm
 	} else {
 		pm = map[string]bool{}
-		data.parentMap[key] = pm
-		return pm, nil
+		s.data.parentMap[key] = pm
+		return pm
 	}
 }
 
-func (s *Store) GetData(system string) (*StoreData, error) {
-
+func (s *Store) GetData() (*StoreData, error) {
 	s.lock.RLock()
 	tmp := s.snapshot
 	s.lock.RUnlock()
@@ -120,7 +114,7 @@ func (s *Store) Add(in *repository.Resource) error {
 
 func (s *Store) addNoLock(in *repository.Resource) error {
 
-	log.Debug().Interface("resource", in).Msg("adding to store")
+	log.Info().Interface("resource", in).Msg("adding to store")
 
 	s.data.entries[in.Name] = in
 
@@ -139,7 +133,7 @@ func (s *Store) Modify(in *repository.Resource) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	log.Debug().Interface("resource", in).Msg("modifying in store")
+	log.Info().Interface("resource", in).Msg("modifying in store")
 
 	if existing, ok := s.data.entries[in.Name]; ok && existing.Parent != in.Parent {
 		return errors.New("cannot modify parent")
@@ -157,7 +151,7 @@ func (s *Store) Delete(in *repository.Resource) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	log.Debug().Interface("resource", in).Msg("deleting from store")
+	log.Info().Interface("resource", in).Msg("deleting from store")
 
 	if existing, ok := s.data.entries[in.Name]; ok && existing.Parent != in.Parent {
 		return errors.New("cannot modify parent")
@@ -178,7 +172,7 @@ func (s *Store) Replace(in []*repository.Resource) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	log.Debug().Interface("resources", in).Msg("replacing store")
+	log.Info().Interface("resources", in).Msg("replacing store")
 
 	s.init()
 

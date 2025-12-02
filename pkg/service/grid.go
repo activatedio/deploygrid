@@ -269,7 +269,7 @@ func (g *gridService) Init() {
 
 // TODO - do we want to add some level of caching?
 
-func (g *gridService) GetSystem(ctx context.Context, system string) (*deploygrid.Grid, error) {
+func (g *gridService) Get(ctx context.Context) (*deploygrid.Grid, error) {
 
 	// We do this first before we acquire a read lock
 	g.updateClusters(ctx)

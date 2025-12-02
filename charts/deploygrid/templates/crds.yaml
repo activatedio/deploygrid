@@ -1,4 +1,5 @@
 # START CRD {{- if .Values.crds.enabled }}
+./crds
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -14,130 +15,12 @@ metadata:
 
     app.kubernetes.io/instance: '{{ .Release.Name }}'
     app.kubernetes.io/name: '{{ template "deploygrid.name" . }}'
-  name: systems.deploygrid.activated.io
 spec:
-  group: deploygrid.activated.io
+  group: ""
   names:
-    kind: System
-    plural: systems
-    singular: system
-  preserveUnknownFields: false
-  scope: Namespaced
-  versions:
-    - name: v1alpha1
-      schema:
-        openAPIV3Schema:
-          properties:
-            spec:
-              properties:
-                description:
-                  nullable: true
-                  type: string
-                displayName:
-                  nullable: true
-                  type: string
-                environments:
-                  items:
-                    properties:
-                      description:
-                        nullable: true
-                        type: string
-                      displayName:
-                        nullable: true
-                        type: string
-                      name:
-                        nullable: true
-                        type: string
-                    type: object
-                  nullable: true
-                  type: array
-              type: object
-            status:
-              type: object
-          type: object
-      served: true
-      storage: true
-
----
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  # START ANNOTATIONS {{- if .Values.crds.keep }}
-  annotations:
-    helm.sh/resource-policy: keep
-  # END ANNOTATIONS {{- end }}
-
-  labels:
-    app: '{{ template "deploygrid.name" . }}'
-    # Generated Labels {{- include "labels" . | nindent 4 }}
-
-    app.kubernetes.io/instance: '{{ .Release.Name }}'
-    app.kubernetes.io/name: '{{ template "deploygrid.name" . }}'
-  name: metadatas.deploygrid.activated.io
-spec:
-  group: deploygrid.activated.io
-  names:
-    kind: Metadata
-    plural: metadatas
-    singular: metadata
-  preserveUnknownFields: false
-  scope: Namespaced
-  versions:
-    - name: v1alpha1
-      schema:
-        openAPIV3Schema:
-          properties:
-            spec:
-              properties:
-                foo:
-                  nullable: true
-                  type: string
-              type: object
-            status:
-              type: object
-          type: object
-      served: true
-      storage: true
-
----
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  # START ANNOTATIONS {{- if .Values.crds.keep }}
-  annotations:
-    helm.sh/resource-policy: keep
-  # END ANNOTATIONS {{- end }}
-
-  labels:
-    app: '{{ template "deploygrid.name" . }}'
-    # Generated Labels {{- include "labels" . | nindent 4 }}
-
-    app.kubernetes.io/instance: '{{ .Release.Name }}'
-    app.kubernetes.io/name: '{{ template "deploygrid.name" . }}'
-  name: metadatas.deploygrid.activated.io
-spec:
-  group: deploygrid.activated.io
-  names:
-    kind: Metadata
-    plural: metadatas
-    singular: metadata
-  preserveUnknownFields: false
-  scope: Namespaced
-  versions:
-    - name: v1alpha1
-      schema:
-        openAPIV3Schema:
-          properties:
-            spec:
-              properties:
-                foo:
-                  nullable: true
-                  type: string
-              type: object
-            status:
-              type: object
-          type: object
-      served: true
-      storage: true
+    kind: ""
+    plural: ""
+  scope: ""
+  versions: null
 
 # END CRD {{- end }}
