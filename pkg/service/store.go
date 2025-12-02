@@ -1,10 +1,11 @@
 package service
 
 import (
+	"sync"
+
 	"github.com/activatedio/deploygrid/pkg/repository"
 	"github.com/go-errors/errors"
 	"github.com/rs/zerolog/log"
-	"sync"
 )
 
 type StoreData struct {
@@ -45,11 +46,12 @@ func (s *StoreData) addAll(in *StoreData) {
 	}
 }
 
+// We map this by system name
 type Store struct {
 	err      error
 	lock     sync.RWMutex
-	data     *StoreData
-	snapshot *StoreData
+	data     map[string]*StoreData
+	snapshot map[string]*StoreData
 }
 
 func NewStore() *Store {
@@ -59,7 +61,7 @@ func NewStore() *Store {
 }
 
 func (s *Store) init() {
-	s.data = NewStoreData()
+	s.data = map[string]*StoreData{}
 	s.clearSnapshot()
 	s.clearError()
 }
@@ -72,17 +74,22 @@ func (s *Store) clearError() {
 	s.err = nil
 }
 
-func (s *Store) getParentMap(key string) map[string]bool {
-	if pm, ok := s.data.parentMap[key]; ok {
-		return pm
+func (s *Store) getParentMap(system, key string) (map[string]bool, error) {
+	data, sok := s.data[system]
+	if !sok {
+		return nil, errors.New("system not found")
+	}
+	if pm, ok := data.parentMap[key]; ok {
+		return pm, nil
 	} else {
 		pm = map[string]bool{}
-		s.data.parentMap[key] = pm
-		return pm
+		data.parentMap[key] = pm
+		return pm, nil
 	}
 }
 
-func (s *Store) GetData() (*StoreData, error) {
+func (s *Store) GetData(system string) (*StoreData, error) {
+
 	s.lock.RLock()
 	tmp := s.snapshot
 	s.lock.RUnlock()

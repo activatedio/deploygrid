@@ -3,15 +3,16 @@ package service
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
+	"sync"
+
 	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
 	"github.com/activatedio/deploygrid/pkg/config"
 	"github.com/activatedio/deploygrid/pkg/deploygrid"
 	"github.com/activatedio/deploygrid/pkg/repository"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/fx"
-	"slices"
-	"strings"
-	"sync"
 )
 
 type resourcesOrError struct {
@@ -26,6 +27,11 @@ type gridService struct {
 	lock         sync.RWMutex
 	addressMap   map[string]string
 	environments []string
+}
+
+func (g *gridService) ListSystems(ctx context.Context) ([]System, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (g *gridService) updateClusters(ctx context.Context) {
@@ -261,7 +267,9 @@ func (g *gridService) Init() {
 	g.updateClusters(context.Background())
 }
 
-func (g *gridService) Get(ctx context.Context) (*deploygrid.Grid, error) {
+// TODO - do we want to add some level of caching?
+
+func (g *gridService) GetSystem(ctx context.Context, system string) (*deploygrid.Grid, error) {
 
 	// We do this first before we acquire a read lock
 	g.updateClusters(ctx)

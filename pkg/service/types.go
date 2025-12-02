@@ -6,14 +6,21 @@ import (
 	"github.com/activatedio/deploygrid/pkg/deploygrid"
 )
 
+type System struct {
+	Name        string
+	Description string
+}
+
 type GridService interface {
 	Init()
-	Get(ctx context.Context) (*deploygrid.Grid, error)
+	ListSystems(ctx context.Context) ([]System, error)
+	GetSystem(ctx context.Context, system string) (*deploygrid.Grid, error)
 }
 
 type Metadata map[string]any
 
 type MetadataCriteria struct {
+	System      string
 	Environment string
 	Path        string
 	// TODO - eventually we can have a selector
