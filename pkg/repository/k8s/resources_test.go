@@ -2,12 +2,13 @@ package k8s_test
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/activatedio/deploygrid/pkg/repository"
 	"github.com/activatedio/deploygrid/pkg/repository/k8s"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/dynamic"
-	"testing"
-	"time"
 )
 
 func TestResources(t *testing.T) {

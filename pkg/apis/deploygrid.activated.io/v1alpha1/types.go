@@ -20,9 +20,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // MetadataSpec defines the desired state of Metadata.
 type MetadataSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
@@ -39,8 +36,7 @@ type MetadataStatus struct {
 }
 
 // +genclient
-// +kubebuilder:object:root=true
-// +kubebuilder:subresource:status
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Metadata is the Schema for the metadata API.
 type Metadata struct {
@@ -49,15 +45,6 @@ type Metadata struct {
 
 	Spec   MetadataSpec   `json:"spec,omitempty"`
 	Status MetadataStatus `json:"status,omitempty"`
-}
-
-// +kubebuilder:object:root=true
-
-// MetadataList contains a list of Metadata.
-type MetadataList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Metadata `json:"items"`
 }
 
 // MetadataViewSpec defines the desired state of MetadataView.
@@ -76,8 +63,7 @@ type MetadataViewStatus struct {
 }
 
 // +genclient
-// +kubebuilder:object:root=true
-// +kubebuilder:subresource:status
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // MetadataView is the Schema for the metadataviews API.
 type MetadataView struct {
@@ -86,15 +72,6 @@ type MetadataView struct {
 
 	Spec   MetadataViewSpec   `json:"spec,omitempty"`
 	Status MetadataViewStatus `json:"status,omitempty"`
-}
-
-// +kubebuilder:object:root=true
-
-// MetadataViewList contains a list of MetadataView.
-type MetadataViewList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []MetadataView `json:"items"`
 }
 
 type SystemEnvironment struct {
@@ -117,8 +94,7 @@ type SystemStatus struct {
 }
 
 // +genclient
-// +kubebuilder:object:root=true
-// +kubebuilder:subresource:status
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // System is the Schema for the systems API.
 type System struct {
@@ -127,13 +103,4 @@ type System struct {
 
 	Spec   SystemSpec   `json:"spec,omitempty"`
 	Status SystemStatus `json:"status,omitempty"`
-}
-
-// +kubebuilder:object:root=true
-
-// SystemList contains a list of System.
-type SystemList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []System `json:"items"`
 }

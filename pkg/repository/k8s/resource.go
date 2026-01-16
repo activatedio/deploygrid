@@ -2,6 +2,8 @@ package k8s
 
 import (
 	"context"
+	"time"
+
 	"github.com/activatedio/deploygrid/pkg/k8s"
 	"github.com/activatedio/deploygrid/pkg/repository"
 	"github.com/go-errors/errors"
@@ -14,7 +16,6 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/tools/cache"
-	"time"
 )
 
 type resourceRepository struct {

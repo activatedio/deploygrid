@@ -2,11 +2,12 @@ package zerolog
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
 	"github.com/activatedio/deploygrid/pkg/config"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"os"
 )
 
 func ConfigureLogging(config *config.LoggingConfig) {

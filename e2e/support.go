@@ -3,14 +3,15 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/activatedio/deploygrid/pkg/apiinfra/viper"
 	deploygridfx "github.com/activatedio/deploygrid/pkg/fx"
 	"github.com/activatedio/deploygrid/pkg/runner"
 	"github.com/go-resty/resty/v2"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/fx"
-	"testing"
-	"time"
 )
 
 func json(r *resty.Request) *resty.Request {

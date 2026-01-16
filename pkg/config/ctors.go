@@ -1,11 +1,12 @@
 package config
 
 import (
+	"github.com/activatedio/cs"
 	apiinfraconfig "github.com/activatedio/deploygrid/pkg/apiinfra/config"
 	"github.com/spf13/viper"
 )
 
-func NewLoggingConfig(v *viper.Viper) *LoggingConfig {
+func NewMainConfig(c cs.Config) *LoggingConfig {
 	return apiinfraconfig.MustUnmarshallAndValidate(v, PrefixLogging, &LoggingConfig{})
 }
 

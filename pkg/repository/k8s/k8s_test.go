@@ -1,11 +1,12 @@
 package k8s_test
 
 import (
+	"os"
+	"testing"
+
 	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/tools/clientcmd"
-	"os"
-	"testing"
 )
 
 var (

@@ -1,10 +1,11 @@
 package mux
 
 import (
+	"net/http"
+
 	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
 	"github.com/gorilla/mux"
 	"github.com/swaggest/openapi-go/openapi3"
-	"net/http"
 )
 
 type OpenapiConfig struct {

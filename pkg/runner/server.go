@@ -3,6 +3,8 @@ package runner
 import (
 	"context"
 	"fmt"
+	"net/http"
+
 	"github.com/activatedio/deploygrid/pkg/config"
 	"github.com/go-errors/errors"
 	"github.com/gorilla/handlers"
@@ -10,7 +12,6 @@ import (
 	"github.com/rs/cors"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/fx"
-	"net/http"
 )
 
 type recoveryLogger struct {

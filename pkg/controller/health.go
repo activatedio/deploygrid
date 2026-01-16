@@ -1,8 +1,9 @@
 package controller
 
 import (
-	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
 	"net/http"
+
+	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
 )
 
 type health struct{}

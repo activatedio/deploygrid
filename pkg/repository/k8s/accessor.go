@@ -3,6 +3,8 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"sync"
+
 	"github.com/activatedio/deploygrid/pkg/config"
 	"github.com/activatedio/deploygrid/pkg/repository"
 	"github.com/go-errors/errors"
@@ -11,7 +13,6 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"sync"
 )
 
 type cluster struct {

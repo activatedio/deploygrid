@@ -1,6 +1,7 @@
 package main
 
 import (
+	apiinfraconfig "github.com/activatedio/deploygrid/pkg/apiinfra/config"
 	apiinfraviper "github.com/activatedio/deploygrid/pkg/apiinfra/viper"
 	apiinfrazerolog "github.com/activatedio/deploygrid/pkg/apiinfra/zerolog"
 	"github.com/activatedio/deploygrid/pkg/config"
@@ -14,23 +15,30 @@ import (
 
 func main() {
 
-	v := apiinfraviper.NewViper()
-	lc := config.NewLoggingConfig(v)
-	apiinfrazerolog.ConfigureLogging(lc)
-
-	err := NewRootCmd(v).Execute()
+	err := NewRootCmd().Execute()
 
 	if err != nil {
 		log.Fatal().Err(err).Msg("command failed")
 	}
 }
 
-func NewRootCmd(v *viper.Viper) *cobra.Command {
+const (
+	FlagConfig      = "config"
+	FlagConfigShort = "c"
+)
 
-	return &cobra.Command{
+func NewRootCmd() *cobra.Command {
+
+	cmd := &cobra.Command{
 		Use: "deploygrid",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			log.Info().Msg("Starting deploygrid")
+
+			configPath := cmd.Flag(FlagConfig).Value.String()
+
+			v := apiinfraconfig.NewConfig(configPath)
+			lc := config.NewLoggingConfig(v)
+			apiinfrazerolog.ConfigureLogging(lc)
 
 			fx.New(deploygridfx.Index(v), fx.Invoke(func(server *runner.RunningServer) {
 				log.Info().Str("host", server.Host).Int("port", server.Port).Msg("Starting server")
@@ -39,4 +47,8 @@ func NewRootCmd(v *viper.Viper) *cobra.Command {
 			return nil
 		},
 	}
+
+	cmd.PersistentFlags().StringP(FlagConfig, FlagConfigShort, "", "path to the configuration file")
+
+	return cmd
 }

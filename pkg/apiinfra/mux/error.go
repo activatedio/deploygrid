@@ -2,9 +2,10 @@ package mux
 
 import (
 	"encoding/json"
+	"net/http"
+
 	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
 	"github.com/rs/zerolog/log"
-	"net/http"
 )
 
 func HandleError(w http.ResponseWriter, r *http.Request, err error) {

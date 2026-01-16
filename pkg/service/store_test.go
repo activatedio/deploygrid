@@ -3,15 +3,16 @@ package service_test
 import (
 	"context"
 	"fmt"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
 	"github.com/activatedio/deploygrid/pkg/apiinfra/zerolog"
 	"github.com/activatedio/deploygrid/pkg/config"
 	"github.com/activatedio/deploygrid/pkg/repository"
 	"github.com/activatedio/deploygrid/pkg/service"
 	"github.com/google/uuid"
-	"sync"
-	"testing"
-	"time"
 )
 
 func init() {

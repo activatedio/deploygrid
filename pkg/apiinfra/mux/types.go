@@ -1,10 +1,11 @@
 package mux
 
 import (
+	"net/http"
+
 	"github.com/gorilla/mux"
 	"github.com/swaggest/openapi-go"
 	"github.com/swaggest/openapi-go/openapi3"
-	"net/http"
 )
 
 var (
