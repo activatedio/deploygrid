@@ -15,12 +15,13 @@ type Grid interface {
 	Get(w http.ResponseWriter, r *http.Request)
 }
 
-type Health interface {
-	Healthz(w http.ResponseWriter, r *http.Request)
+type Systems interface {
+	WithOpenapiBuilder
+	List(w http.ResponseWriter, r *http.Request)
+	Get(w http.ResponseWriter, r *http.Request)
+	Grid(w http.ResponseWriter, r *http.Request)
 }
 
-type Metadata interface {
-	WithOpenapiBuilder
-	Get(w http.ResponseWriter, r *http.Request)
-	Post(w http.ResponseWriter, r *http.Request)
+type Health interface {
+	Healthz(w http.ResponseWriter, r *http.Request)
 }

@@ -25,16 +25,16 @@ import (
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// MetadataList is a list of Metadata resources
-type MetadataList struct {
+// ClusterList is a list of Cluster resources
+type ClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 
-	Items []Metadata `json:"items"`
+	Items []Cluster `json:"items"`
 }
 
-func NewMetadata(namespace, name string, obj Metadata) *Metadata {
-	obj.APIVersion, obj.Kind = SchemeGroupVersion.WithKind("Metadata").ToAPIVersionAndKind()
+func NewCluster(namespace, name string, obj Cluster) *Cluster {
+	obj.APIVersion, obj.Kind = SchemeGroupVersion.WithKind("Cluster").ToAPIVersionAndKind()
 	obj.Name = name
 	obj.Namespace = namespace
 	return &obj
@@ -42,16 +42,50 @@ func NewMetadata(namespace, name string, obj Metadata) *Metadata {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// MetadataViewList is a list of MetadataView resources
-type MetadataViewList struct {
+// ComponentList is a list of Component resources
+type ComponentList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 
-	Items []MetadataView `json:"items"`
+	Items []Component `json:"items"`
 }
 
-func NewMetadataView(namespace, name string, obj MetadataView) *MetadataView {
-	obj.APIVersion, obj.Kind = SchemeGroupVersion.WithKind("MetadataView").ToAPIVersionAndKind()
+func NewComponent(namespace, name string, obj Component) *Component {
+	obj.APIVersion, obj.Kind = SchemeGroupVersion.WithKind("Component").ToAPIVersionAndKind()
+	obj.Name = name
+	obj.Namespace = namespace
+	return &obj
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ConfigurationList is a list of Configuration resources
+type ConfigurationList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+
+	Items []Configuration `json:"items"`
+}
+
+func NewConfiguration(namespace, name string, obj Configuration) *Configuration {
+	obj.APIVersion, obj.Kind = SchemeGroupVersion.WithKind("Configuration").ToAPIVersionAndKind()
+	obj.Name = name
+	obj.Namespace = namespace
+	return &obj
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ConfigurationViewList is a list of ConfigurationView resources
+type ConfigurationViewList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+
+	Items []ConfigurationView `json:"items"`
+}
+
+func NewConfigurationView(namespace, name string, obj ConfigurationView) *ConfigurationView {
+	obj.APIVersion, obj.Kind = SchemeGroupVersion.WithKind("ConfigurationView").ToAPIVersionAndKind()
 	obj.Name = name
 	obj.Namespace = namespace
 	return &obj

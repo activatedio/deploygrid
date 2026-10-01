@@ -102,9 +102,3 @@ func (p *printer) modify(in io.Reader) ([]byte, error) {
 	}
 	return buf.Bytes(), nil
 }
-
-func check(err error) {
-	if err != nil {
-		panic(err)
-	}
-}

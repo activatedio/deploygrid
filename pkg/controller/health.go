@@ -8,7 +8,7 @@ import (
 
 type health struct{}
 
-func (h *health) Healthz(w http.ResponseWriter, r *http.Request) {
+func (h *health) Healthz(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	util.CheckWrite(w.Write([]byte("SERVING")))
 }

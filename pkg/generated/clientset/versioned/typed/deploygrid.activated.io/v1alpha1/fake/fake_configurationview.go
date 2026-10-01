@@ -23,26 +23,26 @@ import (
 	gentype "k8s.io/client-go/gentype"
 )
 
-// fakeMetadataViews implements MetadataViewInterface
-type fakeMetadataViews struct {
-	*gentype.FakeClientWithList[*v1alpha1.MetadataView, *v1alpha1.MetadataViewList]
+// fakeConfigurationViews implements ConfigurationViewInterface
+type fakeConfigurationViews struct {
+	*gentype.FakeClientWithList[*v1alpha1.ConfigurationView, *v1alpha1.ConfigurationViewList]
 	Fake *FakeDeploygridV1alpha1
 }
 
-func newFakeMetadataViews(fake *FakeDeploygridV1alpha1, namespace string) deploygridactivatediov1alpha1.MetadataViewInterface {
-	return &fakeMetadataViews{
-		gentype.NewFakeClientWithList[*v1alpha1.MetadataView, *v1alpha1.MetadataViewList](
+func newFakeConfigurationViews(fake *FakeDeploygridV1alpha1, namespace string) deploygridactivatediov1alpha1.ConfigurationViewInterface {
+	return &fakeConfigurationViews{
+		gentype.NewFakeClientWithList[*v1alpha1.ConfigurationView, *v1alpha1.ConfigurationViewList](
 			fake.Fake,
 			namespace,
-			v1alpha1.SchemeGroupVersion.WithResource("metadataviews"),
-			v1alpha1.SchemeGroupVersion.WithKind("MetadataView"),
-			func() *v1alpha1.MetadataView { return &v1alpha1.MetadataView{} },
-			func() *v1alpha1.MetadataViewList { return &v1alpha1.MetadataViewList{} },
-			func(dst, src *v1alpha1.MetadataViewList) { dst.ListMeta = src.ListMeta },
-			func(list *v1alpha1.MetadataViewList) []*v1alpha1.MetadataView {
+			v1alpha1.SchemeGroupVersion.WithResource("configurationviews"),
+			v1alpha1.SchemeGroupVersion.WithKind("ConfigurationView"),
+			func() *v1alpha1.ConfigurationView { return &v1alpha1.ConfigurationView{} },
+			func() *v1alpha1.ConfigurationViewList { return &v1alpha1.ConfigurationViewList{} },
+			func(dst, src *v1alpha1.ConfigurationViewList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.ConfigurationViewList) []*v1alpha1.ConfigurationView {
 				return gentype.ToPointerSlice(list.Items)
 			},
-			func(list *v1alpha1.MetadataViewList, items []*v1alpha1.MetadataView) {
+			func(list *v1alpha1.ConfigurationViewList, items []*v1alpha1.ConfigurationView) {
 				list.Items = gentype.FromPointerSlice(items)
 			},
 		),

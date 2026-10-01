@@ -4,14 +4,16 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
-	"github.com/activatedio/deploygrid/pkg/config"
 	"github.com/go-errors/errors"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/fx"
+
+	"github.com/activatedio/deploygrid/pkg/config"
 )
 
 type recoveryLogger struct {
@@ -28,7 +30,7 @@ func (r *recoveryLogger) Println(i ...interface{}) {
 func NewServer(router *mux.Router, serverConfig *config.ServerConfig, lifecycle fx.Lifecycle) *RunningServer {
 
 	c := cors.New(cors.Options{
-		AllowOriginFunc: func(origin string) bool {
+		AllowOriginFunc: func(_ string) bool {
 			return true
 		},
 		AllowCredentials: true,
@@ -38,12 +40,13 @@ func NewServer(router *mux.Router, serverConfig *config.ServerConfig, lifecycle 
 	h := handlers.RecoveryHandler(handlers.RecoveryLogger(&recoveryLogger{}), handlers.PrintRecoveryStack(true))(c.Handler(router))
 
 	server := &http.Server{
-		Handler: h,
-		Addr:    fmt.Sprintf("%s:%d", serverConfig.Host, serverConfig.Port),
+		Handler:           h,
+		Addr:              fmt.Sprintf("%s:%d", serverConfig.Host, serverConfig.Port),
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	lifecycle.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
+		OnStart: func(_ context.Context) error {
 			go func() {
 				err := server.ListenAndServe()
 				if !errors.Is(err, http.ErrServerClosed) {

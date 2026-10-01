@@ -23,24 +23,24 @@ import (
 	gentype "k8s.io/client-go/gentype"
 )
 
-// fakeMetadatas implements MetadataInterface
-type fakeMetadatas struct {
-	*gentype.FakeClientWithList[*v1alpha1.Metadata, *v1alpha1.MetadataList]
+// fakeComponents implements ComponentInterface
+type fakeComponents struct {
+	*gentype.FakeClientWithList[*v1alpha1.Component, *v1alpha1.ComponentList]
 	Fake *FakeDeploygridV1alpha1
 }
 
-func newFakeMetadatas(fake *FakeDeploygridV1alpha1, namespace string) deploygridactivatediov1alpha1.MetadataInterface {
-	return &fakeMetadatas{
-		gentype.NewFakeClientWithList[*v1alpha1.Metadata, *v1alpha1.MetadataList](
+func newFakeComponents(fake *FakeDeploygridV1alpha1, namespace string) deploygridactivatediov1alpha1.ComponentInterface {
+	return &fakeComponents{
+		gentype.NewFakeClientWithList[*v1alpha1.Component, *v1alpha1.ComponentList](
 			fake.Fake,
 			namespace,
-			v1alpha1.SchemeGroupVersion.WithResource("metadatas"),
-			v1alpha1.SchemeGroupVersion.WithKind("Metadata"),
-			func() *v1alpha1.Metadata { return &v1alpha1.Metadata{} },
-			func() *v1alpha1.MetadataList { return &v1alpha1.MetadataList{} },
-			func(dst, src *v1alpha1.MetadataList) { dst.ListMeta = src.ListMeta },
-			func(list *v1alpha1.MetadataList) []*v1alpha1.Metadata { return gentype.ToPointerSlice(list.Items) },
-			func(list *v1alpha1.MetadataList, items []*v1alpha1.Metadata) {
+			v1alpha1.SchemeGroupVersion.WithResource("components"),
+			v1alpha1.SchemeGroupVersion.WithKind("Component"),
+			func() *v1alpha1.Component { return &v1alpha1.Component{} },
+			func() *v1alpha1.ComponentList { return &v1alpha1.ComponentList{} },
+			func(dst, src *v1alpha1.ComponentList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.ComponentList) []*v1alpha1.Component { return gentype.ToPointerSlice(list.Items) },
+			func(list *v1alpha1.ComponentList, items []*v1alpha1.Component) {
 				list.Items = gentype.FromPointerSlice(items)
 			},
 		),

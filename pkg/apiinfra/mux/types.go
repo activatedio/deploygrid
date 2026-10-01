@@ -10,8 +10,8 @@ import (
 
 var (
 	contentTypeApplicationJSON = "application/json"
-	ContentOptionsJsonSuccess  = []openapi.ContentOption{openapi.WithContentType(contentTypeApplicationJSON), openapi.WithHTTPStatus(http.StatusOK)}
-	ContentOptionsJsonDefault  = []openapi.ContentOption{openapi.WithContentType(contentTypeApplicationJSON), func(cu *openapi.ContentUnit) {
+	ContentOptionsJSONSuccess  = []openapi.ContentOption{openapi.WithContentType(contentTypeApplicationJSON), openapi.WithHTTPStatus(http.StatusOK)}
+	ContentOptionsJSONDefault  = []openapi.ContentOption{openapi.WithContentType(contentTypeApplicationJSON), func(cu *openapi.ContentUnit) {
 		cu.IsDefault = true
 		cu.Description = "Error"
 	}}

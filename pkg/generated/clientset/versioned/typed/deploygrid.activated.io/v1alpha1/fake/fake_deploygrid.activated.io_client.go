@@ -27,12 +27,20 @@ type FakeDeploygridV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeDeploygridV1alpha1) Metadatas(namespace string) v1alpha1.MetadataInterface {
-	return newFakeMetadatas(c, namespace)
+func (c *FakeDeploygridV1alpha1) Clusters(namespace string) v1alpha1.ClusterInterface {
+	return newFakeClusters(c, namespace)
 }
 
-func (c *FakeDeploygridV1alpha1) MetadataViews(namespace string) v1alpha1.MetadataViewInterface {
-	return newFakeMetadataViews(c, namespace)
+func (c *FakeDeploygridV1alpha1) Components(namespace string) v1alpha1.ComponentInterface {
+	return newFakeComponents(c, namespace)
+}
+
+func (c *FakeDeploygridV1alpha1) Configurations(namespace string) v1alpha1.ConfigurationInterface {
+	return newFakeConfigurations(c, namespace)
+}
+
+func (c *FakeDeploygridV1alpha1) ConfigurationViews(namespace string) v1alpha1.ConfigurationViewInterface {
+	return newFakeConfigurationViews(c, namespace)
 }
 
 func (c *FakeDeploygridV1alpha1) Systems(namespace string) v1alpha1.SystemInterface {

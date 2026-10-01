@@ -1,0 +1,114 @@
+## Sample deploygrid custom resources for the kind development environment.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: deploygrid
+---
+apiVersion: deploygrid.activated.io/v1alpha1
+kind: System
+metadata:
+  name: apps
+  namespace: deploygrid
+spec:
+  displayName: Applications
+  description: Sample system backed by the kind clusters
+  environments:
+    - name: dev
+      displayName: Dev
+    - name: qa
+      displayName: QA
+    - name: stage
+      displayName: Stage
+  groups:
+    - name: apps
+      displayName: Apps
+---
+apiVersion: deploygrid.activated.io/v1alpha1
+kind: Cluster
+metadata:
+  name: kind-app-cluster-1
+  namespace: deploygrid
+spec:
+  displayName: App Cluster 1
+  addresses:
+    - https://127.0.0.1:6444
+  namespaceRules:
+    - match: "dev-*"
+      environment: dev
+    - match: "qa-*"
+      environment: qa
+  collection:
+    mode: kubeconfig
+---
+apiVersion: deploygrid.activated.io/v1alpha1
+kind: Cluster
+metadata:
+  name: kind-app-cluster-2
+  namespace: deploygrid
+spec:
+  displayName: App Cluster 2
+  addresses:
+    - https://127.0.0.1:6445
+  environment: stage
+  collection:
+    mode: kubeconfig
+---
+apiVersion: deploygrid.activated.io/v1alpha1
+kind: Component
+metadata:
+  name: app-a
+  namespace: deploygrid
+spec:
+  system: apps
+  displayName: App A
+  group: apps
+  kind: helm-chart
+  links:
+    - name: Argo CD
+      urlTemplate: "https://argocd.example.com/applications/{{ .Environment }}-app-a"
+---
+apiVersion: deploygrid.activated.io/v1alpha1
+kind: Component
+metadata:
+  name: app-b
+  namespace: deploygrid
+spec:
+  system: apps
+  displayName: App B
+  group: apps
+  kind: helm-chart
+---
+apiVersion: deploygrid.activated.io/v1alpha1
+kind: Configuration
+metadata:
+  name: endpoints
+  namespace: deploygrid
+spec:
+  system: apps
+  values:
+    domain: example.com
+---
+apiVersion: deploygrid.activated.io/v1alpha1
+kind: Configuration
+metadata:
+  name: endpoints-qa
+  namespace: deploygrid
+spec:
+  system: apps
+  environment: qa
+  values:
+    domain: qa.example.com
+---
+apiVersion: deploygrid.activated.io/v1alpha1
+kind: ConfigurationView
+metadata:
+  name: hosts
+  namespace: deploygrid
+spec:
+  system: apps
+  contentType: text/plain
+  template: |
+    {{- range .Components }}
+    {{ .Name }}.{{ $.Values.domain }} -> {{ .Version }}
+    {{- end }}

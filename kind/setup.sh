@@ -24,6 +24,11 @@ kubectl --context kind-ops-cluster-1 apply -f ${dir}/argocd-application-crds.yam
 sleep 2
 kubectl --context kind-ops-cluster-1 apply -f ${dir}/applications.yaml
 
+# deploygrid custom resources live on the ops (control) cluster
+kubectl --context kind-ops-cluster-1 apply -f ${dir}/../crds
+sleep 2
+kubectl --context kind-ops-cluster-1 apply -f ${dir}/systems.yaml
+
 # Applications
 kubectl --context kind-app-cluster-1 apply -f ${dir}/deployments-dev.yaml
 kubectl --context kind-app-cluster-1 apply -f ${dir}/deployments-qa.yaml

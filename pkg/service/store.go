@@ -3,9 +3,10 @@ package service
 import (
 	"sync"
 
-	"github.com/activatedio/deploygrid/pkg/repository"
 	"github.com/go-errors/errors"
 	"github.com/rs/zerolog/log"
+
+	"github.com/activatedio/deploygrid/pkg/repository"
 )
 
 type StoreData struct {
@@ -76,11 +77,10 @@ func (s *Store) clearError() {
 func (s *Store) getParentMap(key string) map[string]bool {
 	if pm, ok := s.data.parentMap[key]; ok {
 		return pm
-	} else {
-		pm = map[string]bool{}
-		s.data.parentMap[key] = pm
-		return pm
 	}
+	pm := map[string]bool{}
+	s.data.parentMap[key] = pm
+	return pm
 }
 
 func (s *Store) GetData() (*StoreData, error) {
@@ -88,31 +88,30 @@ func (s *Store) GetData() (*StoreData, error) {
 	tmp := s.snapshot
 	s.lock.RUnlock()
 
-	if tmp == nil {
-		s.lock.Lock()
-		defer s.lock.Unlock()
-		tmp = s.snapshot
-		// Someone else got the lock and updated it, err
-		if tmp != nil {
-			return tmp, s.err
-		}
-		s.snapshot = s.data.copy()
-		tmp = s.snapshot
-		return tmp, s.err
-	} else {
+	if tmp != nil {
 		return tmp, s.err
 	}
 
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	tmp = s.snapshot
+	// Someone else got the lock and updated it first
+	if tmp != nil {
+		return tmp, s.err
+	}
+	s.snapshot = s.data.copy()
+	return s.snapshot, s.err
 }
 
 func (s *Store) Add(in *repository.Resource) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	return s.addNoLock(in)
+	s.addNoLock(in)
+	return nil
 }
 
-func (s *Store) addNoLock(in *repository.Resource) error {
+func (s *Store) addNoLock(in *repository.Resource) {
 
 	log.Info().Interface("resource", in).Msg("adding to store")
 
@@ -124,8 +123,6 @@ func (s *Store) addNoLock(in *repository.Resource) error {
 
 	s.clearSnapshot()
 	s.clearError()
-
-	return nil
 }
 
 // Parents are set on creation and cannot be modified
@@ -177,11 +174,7 @@ func (s *Store) Replace(in []*repository.Resource) error {
 	s.init()
 
 	for _, r := range in {
-		err := s.addNoLock(r)
-		if err != nil {
-			s.errorNoLock(err)
-			return nil
-		}
+		s.addNoLock(r)
 	}
 
 	return nil

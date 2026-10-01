@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/activatedio/deploygrid/pkg/k8s"
-	"github.com/activatedio/deploygrid/pkg/repository"
 	"github.com/go-errors/errors"
 	"github.com/rs/zerolog/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,6 +14,9 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/tools/cache"
+
+	"github.com/activatedio/deploygrid/pkg/k8s"
+	"github.com/activatedio/deploygrid/pkg/repository"
 )
 
 type resourceRepository struct {
@@ -61,10 +62,8 @@ func (c *resourceStoreAdapter) handleSingle(obj any, handler func(res *repositor
 		}
 
 		return handler(res)
-
-	} else {
-		return errors.New("type is not unstructured")
 	}
+	return errors.New("type is not unstructured")
 }
 
 func (c *resourceStoreAdapter) Add(obj interface{}) error {
@@ -83,7 +82,7 @@ func (c *resourceStoreAdapter) Delete(obj interface{}) error {
 	return c.handleSingle(obj, c.store.Delete)
 }
 
-func (c *resourceStoreAdapter) Replace(i []interface{}, s string) error {
+func (c *resourceStoreAdapter) Replace(i []interface{}, _ string) error {
 	log.Info().Interface("replace", i).Msgf("Replace")
 
 	var res []*repository.Resource
@@ -131,9 +130,9 @@ func (c *resourceRepository) Watch(ctx context.Context, store repository.Resourc
 		for {
 			select {
 			case <-ctx.Done():
-				break
+				return
 			case rt := <-errorChan:
-				log.Error().Err(rt.Error).Msgf(rt.Message, rt.KeysAndValues)
+				log.Error().Err(rt.Error).Msgf(rt.Message, rt.KeysAndValues...)
 				store.Error(rt.Error)
 			}
 		}
@@ -147,18 +146,16 @@ func (c *resourceRepository) Watch(ctx context.Context, store repository.Resourc
 			Factor:   5.0,
 		}
 
-		for {
-			select {
-			case <-ctx.Done():
-				break
-			default:
-				err := wait.ExponentialBackoffWithContext(ctx, backoff, func(ctx context.Context) (done bool, err error) {
-					ref.RunWithContext(ctx)
-					return false, errors.New("watch ended")
-				})
-				if err != nil {
-					log.Error().Err(err).Msg("wait backoff")
-				}
+		// RunWithContext returns when the watch ends; retry with backoff until
+		// the context is cancelled. A plain `break` inside `select` only leaves
+		// the select, so the loop condition must observe the context.
+		for ctx.Err() == nil {
+			err := wait.ExponentialBackoffWithContext(ctx, backoff, func(ctx context.Context) (done bool, err error) {
+				ref.RunWithContext(ctx)
+				return false, errors.New("watch ended")
+			})
+			if err != nil && ctx.Err() == nil {
+				log.Error().Err(err).Msg("wait backoff")
 			}
 		}
 	}()

@@ -31,6 +31,18 @@ ui:
 clusters: []
 environments: []
 
+# Custom resource definitions for System, Component, Cluster, Configuration
+# and ConfigurationView.
+crds:
+  enabled: true
+  # Keep CRDs (and the data they hold) when the release is uninstalled.
+  keep: true
+
+# The control cluster is the cluster this chart is installed into; deploygrid
+# custom resources are read from the release namespace.
+control:
+  enabled: true
+
 # This is for the secretes for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 imagePullSecrets: []
 # This is to override the chart name.

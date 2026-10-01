@@ -17,8 +17,12 @@ limitations under the License.
 
 package v1alpha1
 
-type MetadataExpansion interface{}
+type ClusterExpansion interface{}
 
-type MetadataViewExpansion interface{}
+type ComponentExpansion interface{}
+
+type ConfigurationExpansion interface{}
+
+type ConfigurationViewExpansion interface{}
 
 type SystemExpansion interface{}

@@ -4,9 +4,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/tools/clientcmd"
+
+	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
 )
 
 var (

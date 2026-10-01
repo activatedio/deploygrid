@@ -6,9 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
-	"github.com/activatedio/deploygrid/pkg/repository"
-	"github.com/activatedio/deploygrid/pkg/repository/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -16,6 +13,10 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
+
+	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
+	"github.com/activatedio/deploygrid/pkg/repository"
+	"github.com/activatedio/deploygrid/pkg/repository/k8s"
 )
 
 func TestResourceRepository_Watch(t *testing.T) {
@@ -38,22 +39,22 @@ func TestResourceRepository_Watch(t *testing.T) {
 		"error": {
 			arrange: func() (context.Context, context.CancelFunc, dynamic.Interface, schema.GroupVersionResource, k8s.ToResource, repository.RecordingResourceStore) {
 				ctx, cancel := context.WithCancel(context.Background())
-				return ctx, cancel, opsCl, gvrInvalid, func(obj *unstructured.Unstructured) (*repository.Resource, error) {
+				return ctx, cancel, opsCl, gvrInvalid, func(_ *unstructured.Unstructured) (*repository.Resource, error) {
 					panic("should not execute")
 				}, repository.NewRecordingResourceStore()
 			},
-			assert: func(ctx context.Context, cancel context.CancelFunc, store repository.RecordingResourceStore) {
+			assert: func(_ context.Context, cancel context.CancelFunc, store repository.RecordingResourceStore) {
 
 				assert.EventuallyWithT(t, func(c *assert.CollectT) {
 
 					recs := store.GetRecords()
 
-					assert.True(c, len(recs) > 1)
+					assert.Greater(c, len(recs), 1)
 					for _, rec := range recs {
 						assert.Equal(c, repository.ResourceStoreEventError, rec.EventType)
 						assert.Nil(c, rec.Resource)
 						assert.Nil(c, rec.ResourceArray)
-						assert.NotNil(c, rec.Error)
+						assert.Error(c, rec.Error)
 					}
 
 				}, 10*time.Second, 500*time.Millisecond)
@@ -88,13 +89,18 @@ func TestResourceRepository_Watch(t *testing.T) {
 			},
 			assert: func(ctx context.Context, cancel context.CancelFunc, store repository.RecordingResourceStore) {
 
+				// The initial list must contain every namespace currently on the
+				// cluster; count them rather than hard-coding the fixture size.
+				existing, err := opsCl.Resource(gvr).List(ctx, metav1.ListOptions{})
+				util.Check(err)
+
 				assert.EventuallyWithT(t, func(c *assert.CollectT) {
 
 					rec := store.GetRecords()
 
 					require.Len(c, rec, 1)
 					assert.Equal(c, repository.ResourceStoreEventReplace, rec[0].EventType)
-					assert.Len(c, rec[0].ResourceArray, 6)
+					assert.Len(c, rec[0].ResourceArray, len(existing.Items))
 
 				}, time.Second, 200*time.Millisecond)
 
@@ -127,7 +133,7 @@ func TestResourceRepository_Watch(t *testing.T) {
 
 				}, time.Second, 200*time.Millisecond)
 
-				err = opsCl.Resource(gvr).Delete(ctx, nsName, metav1.DeleteOptions{})
+				util.Check(opsCl.Resource(gvr).Delete(ctx, nsName, metav1.DeleteOptions{}))
 
 				assert.EventuallyWithT(t, func(c *assert.CollectT) {
 
@@ -158,7 +164,7 @@ func TestResourceRepository_Watch(t *testing.T) {
 	}
 
 	for k, v := range cases {
-		t.Run(k, func(t *testing.T) {
+		t.Run(k, func(_ *testing.T) {
 
 			ctx, cancel, cl, gvr, toR, store := v.arrange()
 

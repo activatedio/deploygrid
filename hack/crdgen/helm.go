@@ -77,9 +77,8 @@ var (
 			// We are now in the metadata map
 			tctx.inMetadata = false
 			return tctx, innerMetadataVisitor, nil
-		} else {
-			return tctx, nil, nil
 		}
+		return tctx, nil, nil
 	})
 )
 

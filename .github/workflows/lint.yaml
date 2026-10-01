@@ -18,12 +18,10 @@ jobs:
           cache: false  # The golangci-lint action does its own caching.
 
       - name: Check go mod tidy
-        working-directory: ./api
         run: go mod tidy && git diff --exit-code go.mod go.sum
 
       - name: Lint
         uses: golangci/golangci-lint-action@v7
         with:
           version: ${{ env.GOLANGCI_VERSION }}
-          working-directory: ./api
-
+  

@@ -17,7 +17,6 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Create k8s Kind Cluster
-      working-directory: ./api
       run: |
         ./kind/setup.sh
 
@@ -27,7 +26,6 @@ jobs:
         go-version: '1.24.3'
 
     - name: Test
-      working-directory: ./api
       run: |
         LOGGING_LEVEL=info go test -v ./...
 

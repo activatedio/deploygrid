@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/activatedio/deploygrid/pkg/repository"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
+
+	"github.com/activatedio/deploygrid/pkg/repository"
 )
 
 func NewApplicationRepository(client dynamic.Interface) repository.ResourceRepository {
@@ -35,7 +36,9 @@ func NewApplicationRepository(client dynamic.Interface) repository.ResourceRepos
 				compName = parts[len(parts)-1]
 			}
 
-			simpleName := app.Spec.Source.Chart
+			// Chart-sourced apps are named by chart; git-sourced apps fall back to
+			// the last path segment of the repository URL.
+			simpleName := compName
 
 			return &repository.Resource{
 				Name:        ApplicationName(app.Name),
@@ -89,13 +92,7 @@ func NewDeploymentRepository(client dynamic.Interface) repository.ResourceReposi
 
 			for _, c := range dep.Spec.Template.Spec.Containers {
 
-				parts := strings.Split(c.Image, ":")
-
-				version := "latest"
-
-				if len(parts) > 1 {
-					version = parts[1]
-				}
+				version := ParseImageReference(c.Image).Version()
 
 				pathElement := fmt.Sprintf("deployments/%s/containers/%s", dep.Name, c.Name)
 				name := fmt.Sprintf("namespaces/%s/%s", dep.Namespace, pathElement)

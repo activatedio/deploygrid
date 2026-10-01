@@ -3,9 +3,10 @@ package mux
 import (
 	"net/http"
 
-	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
 	"github.com/gorilla/mux"
 	"github.com/swaggest/openapi-go/openapi3"
+
+	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
 )
 
 type OpenapiConfig struct {
@@ -39,7 +40,7 @@ func (o *openapiImpl) Mount(router *mux.Router, builders ...OpenapiBuilder) erro
 		return err
 	}
 
-	router.HandleFunc("/swagger.json", func(w http.ResponseWriter, req *http.Request) {
+	router.HandleFunc("/swagger.json", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		util.CheckWrite(w.Write(out))
 	}).Methods(http.MethodGet)

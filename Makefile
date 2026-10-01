@@ -58,10 +58,18 @@ dev_kind:
 	./kind/setup.sh
 
 test:
-	LOGGING_LEVEL=info go test ./...
+	DEPLOYGRID_LOGGING_LEVEL=info go test ./...
+
+lint: golangci-lint
+	$(GOLANGCI_LINT) run ./...
 
 serve:
-	SWAGGER_SWAGGER_UI_URL=http://127.0.0.1:8081 CONFIG_PATH=./testdata/config.yaml LOGGING_DEV_MODE=true go run ./cmd/main
+	DEPLOYGRID_SWAGGER_SWAGGER_UI_URL=http://127.0.0.1:8081 CONFIG_PATH=./testdata/config.yaml DEPLOYGRID_LOGGING_DEV_MODE=true go run ./cmd/main
+
+## Apply CRDs and sample custom resources to the kind ops cluster
+dev_kind_crs:
+	kubectl --context kind-ops-cluster-1 apply -f ./crds
+	kubectl --context kind-ops-cluster-1 apply -f ./kind/systems.yaml
 
 ##@ Build
 
@@ -78,7 +86,7 @@ GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
 
 ## Tool Versions
 CONTROLLER_TOOLS_VERSION ?= v0.16.4
-GOLANGCI_LINT_VERSION ?= v1.61.0
+GOLANGCI_LINT_VERSION ?= v2.2.2
 
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
@@ -88,7 +96,7 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 .PHONY: golangci-lint
 golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
 $(GOLANGCI_LINT): $(LOCALBIN)
-	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
+	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/v2/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
 
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist

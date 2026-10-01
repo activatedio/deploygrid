@@ -33,31 +33,31 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// MetadataController interface for managing Metadata resources.
-type MetadataController interface {
-	generic.ControllerInterface[*v1alpha1.Metadata, *v1alpha1.MetadataList]
+// ConfigurationViewController interface for managing ConfigurationView resources.
+type ConfigurationViewController interface {
+	generic.ControllerInterface[*v1alpha1.ConfigurationView, *v1alpha1.ConfigurationViewList]
 }
 
-// MetadataClient interface for managing Metadata resources in Kubernetes.
-type MetadataClient interface {
-	generic.ClientInterface[*v1alpha1.Metadata, *v1alpha1.MetadataList]
+// ConfigurationViewClient interface for managing ConfigurationView resources in Kubernetes.
+type ConfigurationViewClient interface {
+	generic.ClientInterface[*v1alpha1.ConfigurationView, *v1alpha1.ConfigurationViewList]
 }
 
-// MetadataCache interface for retrieving Metadata resources in memory.
-type MetadataCache interface {
-	generic.CacheInterface[*v1alpha1.Metadata]
+// ConfigurationViewCache interface for retrieving ConfigurationView resources in memory.
+type ConfigurationViewCache interface {
+	generic.CacheInterface[*v1alpha1.ConfigurationView]
 }
 
-// MetadataStatusHandler is executed for every added or modified Metadata. Should return the new status to be updated
-type MetadataStatusHandler func(obj *v1alpha1.Metadata, status v1alpha1.MetadataStatus) (v1alpha1.MetadataStatus, error)
+// ConfigurationViewStatusHandler is executed for every added or modified ConfigurationView. Should return the new status to be updated
+type ConfigurationViewStatusHandler func(obj *v1alpha1.ConfigurationView, status v1alpha1.ConfigurationViewStatus) (v1alpha1.ConfigurationViewStatus, error)
 
-// MetadataGeneratingHandler is the top-level handler that is executed for every Metadata event. It extends MetadataStatusHandler by a returning a slice of child objects to be passed to apply.Apply
-type MetadataGeneratingHandler func(obj *v1alpha1.Metadata, status v1alpha1.MetadataStatus) ([]runtime.Object, v1alpha1.MetadataStatus, error)
+// ConfigurationViewGeneratingHandler is the top-level handler that is executed for every ConfigurationView event. It extends ConfigurationViewStatusHandler by a returning a slice of child objects to be passed to apply.Apply
+type ConfigurationViewGeneratingHandler func(obj *v1alpha1.ConfigurationView, status v1alpha1.ConfigurationViewStatus) ([]runtime.Object, v1alpha1.ConfigurationViewStatus, error)
 
-// RegisterMetadataStatusHandler configures a MetadataController to execute a MetadataStatusHandler for every events observed.
+// RegisterConfigurationViewStatusHandler configures a ConfigurationViewController to execute a ConfigurationViewStatusHandler for every events observed.
 // If a non-empty condition is provided, it will be updated in the status conditions for every handler execution
-func RegisterMetadataStatusHandler(ctx context.Context, controller MetadataController, condition condition.Cond, name string, handler MetadataStatusHandler) {
-	statusHandler := &metadataStatusHandler{
+func RegisterConfigurationViewStatusHandler(ctx context.Context, controller ConfigurationViewController, condition condition.Cond, name string, handler ConfigurationViewStatusHandler) {
+	statusHandler := &configurationViewStatusHandler{
 		client:    controller,
 		condition: condition,
 		handler:   handler,
@@ -65,31 +65,31 @@ func RegisterMetadataStatusHandler(ctx context.Context, controller MetadataContr
 	controller.AddGenericHandler(ctx, name, generic.FromObjectHandlerToHandler(statusHandler.sync))
 }
 
-// RegisterMetadataGeneratingHandler configures a MetadataController to execute a MetadataGeneratingHandler for every events observed, passing the returned objects to the provided apply.Apply.
+// RegisterConfigurationViewGeneratingHandler configures a ConfigurationViewController to execute a ConfigurationViewGeneratingHandler for every events observed, passing the returned objects to the provided apply.Apply.
 // If a non-empty condition is provided, it will be updated in the status conditions for every handler execution
-func RegisterMetadataGeneratingHandler(ctx context.Context, controller MetadataController, apply apply.Apply,
-	condition condition.Cond, name string, handler MetadataGeneratingHandler, opts *generic.GeneratingHandlerOptions) {
-	statusHandler := &metadataGeneratingHandler{
-		MetadataGeneratingHandler: handler,
-		apply:                     apply,
-		name:                      name,
-		gvk:                       controller.GroupVersionKind(),
+func RegisterConfigurationViewGeneratingHandler(ctx context.Context, controller ConfigurationViewController, apply apply.Apply,
+	condition condition.Cond, name string, handler ConfigurationViewGeneratingHandler, opts *generic.GeneratingHandlerOptions) {
+	statusHandler := &configurationViewGeneratingHandler{
+		ConfigurationViewGeneratingHandler: handler,
+		apply:                              apply,
+		name:                               name,
+		gvk:                                controller.GroupVersionKind(),
 	}
 	if opts != nil {
 		statusHandler.opts = *opts
 	}
 	controller.OnChange(ctx, name, statusHandler.Remove)
-	RegisterMetadataStatusHandler(ctx, controller, condition, name, statusHandler.Handle)
+	RegisterConfigurationViewStatusHandler(ctx, controller, condition, name, statusHandler.Handle)
 }
 
-type metadataStatusHandler struct {
-	client    MetadataClient
+type configurationViewStatusHandler struct {
+	client    ConfigurationViewClient
 	condition condition.Cond
-	handler   MetadataStatusHandler
+	handler   ConfigurationViewStatusHandler
 }
 
 // sync is executed on every resource addition or modification. Executes the configured handlers and sends the updated status to the Kubernetes API
-func (a *metadataStatusHandler) sync(key string, obj *v1alpha1.Metadata) (*v1alpha1.Metadata, error) {
+func (a *configurationViewStatusHandler) sync(key string, obj *v1alpha1.ConfigurationView) (*v1alpha1.ConfigurationView, error) {
 	if obj == nil {
 		return obj, nil
 	}
@@ -128,8 +128,8 @@ func (a *metadataStatusHandler) sync(key string, obj *v1alpha1.Metadata) (*v1alp
 	return obj, err
 }
 
-type metadataGeneratingHandler struct {
-	MetadataGeneratingHandler
+type configurationViewGeneratingHandler struct {
+	ConfigurationViewGeneratingHandler
 	apply apply.Apply
 	opts  generic.GeneratingHandlerOptions
 	gvk   schema.GroupVersionKind
@@ -138,12 +138,12 @@ type metadataGeneratingHandler struct {
 }
 
 // Remove handles the observed deletion of a resource, cascade deleting every associated resource previously applied
-func (a *metadataGeneratingHandler) Remove(key string, obj *v1alpha1.Metadata) (*v1alpha1.Metadata, error) {
+func (a *configurationViewGeneratingHandler) Remove(key string, obj *v1alpha1.ConfigurationView) (*v1alpha1.ConfigurationView, error) {
 	if obj != nil {
 		return obj, nil
 	}
 
-	obj = &v1alpha1.Metadata{}
+	obj = &v1alpha1.ConfigurationView{}
 	obj.Namespace, obj.Name = kv.RSplit(key, "/")
 	obj.SetGroupVersionKind(a.gvk)
 
@@ -157,13 +157,13 @@ func (a *metadataGeneratingHandler) Remove(key string, obj *v1alpha1.Metadata) (
 		ApplyObjects()
 }
 
-// Handle executes the configured MetadataGeneratingHandler and pass the resulting objects to apply.Apply, finally returning the new status of the resource
-func (a *metadataGeneratingHandler) Handle(obj *v1alpha1.Metadata, status v1alpha1.MetadataStatus) (v1alpha1.MetadataStatus, error) {
+// Handle executes the configured ConfigurationViewGeneratingHandler and pass the resulting objects to apply.Apply, finally returning the new status of the resource
+func (a *configurationViewGeneratingHandler) Handle(obj *v1alpha1.ConfigurationView, status v1alpha1.ConfigurationViewStatus) (v1alpha1.ConfigurationViewStatus, error) {
 	if !obj.DeletionTimestamp.IsZero() {
 		return status, nil
 	}
 
-	objs, newStatus, err := a.MetadataGeneratingHandler(obj, status)
+	objs, newStatus, err := a.ConfigurationViewGeneratingHandler(obj, status)
 	if err != nil {
 		return newStatus, err
 	}
@@ -184,7 +184,7 @@ func (a *metadataGeneratingHandler) Handle(obj *v1alpha1.Metadata, status v1alph
 
 // isNewResourceVersion detects if a specific resource version was already successfully processed.
 // Only used if UniqueApplyForResourceVersion is set in generic.GeneratingHandlerOptions
-func (a *metadataGeneratingHandler) isNewResourceVersion(obj *v1alpha1.Metadata) bool {
+func (a *configurationViewGeneratingHandler) isNewResourceVersion(obj *v1alpha1.ConfigurationView) bool {
 	if !a.opts.UniqueApplyForResourceVersion {
 		return true
 	}
@@ -197,7 +197,7 @@ func (a *metadataGeneratingHandler) isNewResourceVersion(obj *v1alpha1.Metadata)
 
 // storeResourceVersion keeps track of the latest resource version of an object for which Apply was executed
 // Only used if UniqueApplyForResourceVersion is set in generic.GeneratingHandlerOptions
-func (a *metadataGeneratingHandler) storeResourceVersion(obj *v1alpha1.Metadata) {
+func (a *configurationViewGeneratingHandler) storeResourceVersion(obj *v1alpha1.ConfigurationView) {
 	if !a.opts.UniqueApplyForResourceVersion {
 		return
 	}

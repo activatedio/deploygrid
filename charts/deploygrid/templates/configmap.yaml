@@ -7,6 +7,9 @@ metadata:
     {{- include "deploygrid.labels" . | nindent 4 }}
 data:
   config.yaml: |-
+    control:
+      enabled: {{ .Values.control.enabled }}
+      namespace: {{ .Release.Namespace }}
     {{- if .Values.clusters }}
     clusters:
       {{- if .Values.environments }}

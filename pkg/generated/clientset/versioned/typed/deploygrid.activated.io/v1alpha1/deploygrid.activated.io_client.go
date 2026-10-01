@@ -27,8 +27,10 @@ import (
 
 type DeploygridV1alpha1Interface interface {
 	RESTClient() rest.Interface
-	MetadatasGetter
-	MetadataViewsGetter
+	ClustersGetter
+	ComponentsGetter
+	ConfigurationsGetter
+	ConfigurationViewsGetter
 	SystemsGetter
 }
 
@@ -37,12 +39,20 @@ type DeploygridV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *DeploygridV1alpha1Client) Metadatas(namespace string) MetadataInterface {
-	return newMetadatas(c, namespace)
+func (c *DeploygridV1alpha1Client) Clusters(namespace string) ClusterInterface {
+	return newClusters(c, namespace)
 }
 
-func (c *DeploygridV1alpha1Client) MetadataViews(namespace string) MetadataViewInterface {
-	return newMetadataViews(c, namespace)
+func (c *DeploygridV1alpha1Client) Components(namespace string) ComponentInterface {
+	return newComponents(c, namespace)
+}
+
+func (c *DeploygridV1alpha1Client) Configurations(namespace string) ConfigurationInterface {
+	return newConfigurations(c, namespace)
+}
+
+func (c *DeploygridV1alpha1Client) ConfigurationViews(namespace string) ConfigurationViewInterface {
+	return newConfigurationViews(c, namespace)
 }
 
 func (c *DeploygridV1alpha1Client) Systems(namespace string) SystemInterface {

@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/activatedio/deploygrid/pkg/config"
-	"github.com/activatedio/deploygrid/pkg/repository"
-	"github.com/go-errors/errors"
 	"github.com/sony/gobreaker/v2"
 	"go.uber.org/fx"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+
+	"github.com/activatedio/deploygrid/pkg/config"
+	"github.com/activatedio/deploygrid/pkg/repository"
 )
 
 type cluster struct {
@@ -27,11 +27,11 @@ type resourceRepositoryClusterAwareAccessor struct {
 	lock         sync.Mutex
 }
 
-func (c *resourceRepositoryClusterAwareAccessor) ClusterNames(ctx context.Context) []string {
+func (c *resourceRepositoryClusterAwareAccessor) ClusterNames(_ context.Context) []string {
 	return c.clusterNames
 }
 
-func (c *resourceRepositoryClusterAwareAccessor) Get(ctx context.Context, clusterName string) (*repository.Resources, error) {
+func (c *resourceRepositoryClusterAwareAccessor) Get(_ context.Context, clusterName string) (*repository.Resources, error) {
 
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -43,7 +43,7 @@ func (c *resourceRepositoryClusterAwareAccessor) Get(ctx context.Context, cluste
 	cl, ok := c.clusters[clusterName]
 
 	if !ok {
-		return nil, errors.New(fmt.Sprintf("cluster not found: %s", clusterName))
+		return nil, fmt.Errorf("cluster not found: %s", clusterName)
 	}
 
 	r, err := cl.cb.Execute(func() (*repository.Resources, error) {
@@ -57,13 +57,16 @@ func (c *resourceRepositoryClusterAwareAccessor) Get(ctx context.Context, cluste
 			cfg, err = clientcmd.BuildConfigFromFlags("", cl.config.KubeConfigPath)
 		}
 
-		// TODO - remove this once we pass these tests
-		cfg.TLSClientConfig.CAData = nil
-		cfg.TLSClientConfig.CAFile = ""
-		cfg.TLSClientConfig.Insecure = true
-
 		if err != nil {
 			return nil, err
+		}
+
+		if cl.config.InsecureSkipTLSVerify {
+			// Development only: kubeconfigs written by tools such as kind are
+			// valid, so this should never be needed against a real cluster.
+			cfg.CAData = nil
+			cfg.CAFile = ""
+			cfg.Insecure = true
 		}
 
 		client, err := dynamic.NewForConfig(cfg)
@@ -91,13 +94,14 @@ type ResourceRepositoryClusterAwareAccessorParams struct {
 
 func NewResourceRepositoryClusterAwareAccessor(params ResourceRepositoryClusterAwareAccessorParams) repository.ClusterAwareAccessor[*repository.Resources] {
 
-	var clusterNames []string
+	clusterNames := make([]string, 0, len(params.ClustersConfig.Clusters))
 	clusters := map[string]cluster{}
 
-	for _, c := range params.ClustersConfig.Clusters {
+	for i := range params.ClustersConfig.Clusters {
+		c := &params.ClustersConfig.Clusters[i]
 		clusterNames = append(clusterNames, c.Name)
 		clusters[c.Name] = cluster{
-			config: &c,
+			config: c,
 			cb: gobreaker.NewCircuitBreaker[*repository.Resources](gobreaker.Settings{
 				Name: "factory",
 			}),

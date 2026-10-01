@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
-	"github.com/activatedio/deploygrid/pkg/config"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+
+	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
+	"github.com/activatedio/deploygrid/pkg/config"
 )
 
 func ConfigureLogging(config *config.LoggingConfig) {

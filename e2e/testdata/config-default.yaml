@@ -1,6 +1,10 @@
 ---
 logging:
   devMode: true
+control:
+  enabled: true
+  namespace: deploygrid
+  kubeConfigPath: ../.kind/kubeconfig-ops-cluster-1.yaml
 clusters:
   environments:
     - Dev

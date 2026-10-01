@@ -7,12 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
 	"github.com/activatedio/deploygrid/pkg/apiinfra/zerolog"
 	"github.com/activatedio/deploygrid/pkg/config"
 	"github.com/activatedio/deploygrid/pkg/repository"
 	"github.com/activatedio/deploygrid/pkg/service"
-	"github.com/google/uuid"
 )
 
 func init() {
@@ -37,13 +38,13 @@ func (c *cycleCounter) incrementReadCount() {
 	c.readCountLock.Lock()
 	defer c.readCountLock.Unlock()
 
-	c.readCount = c.readCount + 1
+	c.readCount++
 }
 
 func (c *cycleCounter) incrementWriteCount() {
 	c.writeCountLock.Lock()
 	defer c.writeCountLock.Unlock()
-	c.writeCount = c.writeCount + 1
+	c.writeCount++
 }
 
 func TestStore_Concurrency_AddModifyDelete(t *testing.T) {

@@ -7,12 +7,13 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/rs/zerolog/log"
+	"go.uber.org/fx"
+
 	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
 	"github.com/activatedio/deploygrid/pkg/config"
 	"github.com/activatedio/deploygrid/pkg/deploygrid"
 	"github.com/activatedio/deploygrid/pkg/repository"
-	"github.com/rs/zerolog/log"
-	"go.uber.org/fx"
 )
 
 type resourcesOrError struct {
@@ -27,11 +28,6 @@ type gridService struct {
 	lock         sync.RWMutex
 	addressMap   map[string]string
 	environments []string
-}
-
-func (g *gridService) ListSystems(ctx context.Context) ([]System, error) {
-	//TODO implement me
-	panic("implement me")
 }
 
 func (g *gridService) updateClusters(ctx context.Context) {
@@ -99,7 +95,6 @@ func newGridCell() *gridCell {
 }
 
 type gridRow struct {
-	level int
 	group string
 	cells map[string]*gridCell
 	name  string
@@ -142,9 +137,9 @@ func (g *gridRow) expand() []*deploygrid.Component {
 		}
 	}
 
-	var paths []string
+	paths := make([]string, 0, len(pathMap))
 
-	for k, _ := range pathMap {
+	for k := range pathMap {
 		paths = append(paths, k)
 	}
 
@@ -208,7 +203,7 @@ func buildGrid(grid *deploygrid.Grid, rows map[string]*gridRow, columns []string
 
 	envs := map[string]bool{}
 
-	var sorted []*gridRow
+	sorted := make([]*gridRow, 0, len(rows))
 
 	for _, rv := range rows {
 		sorted = append(sorted, rv)
@@ -221,7 +216,7 @@ func buildGrid(grid *deploygrid.Grid, rows map[string]*gridRow, columns []string
 	grouped := map[string]*deploygrid.Component{}
 
 	for _, rv := range sorted {
-		for ck, _ := range rv.cells {
+		for ck := range rv.cells {
 			envs[ck] = true
 		}
 
@@ -250,7 +245,7 @@ func buildGrid(grid *deploygrid.Grid, rows map[string]*gridRow, columns []string
 		})
 	}
 
-	var comps []*deploygrid.Component
+	comps := make([]*deploygrid.Component, 0, len(grouped))
 
 	for _, v := range grouped {
 		comps = append(comps, v)
@@ -285,63 +280,11 @@ func (g *gridService) Get(ctx context.Context) (*deploygrid.Grid, error) {
 		}
 	}
 
-	data := map[string]*StoreData{}
+	data := g.snapshotStores(res)
 
-	for k, v := range g.stores {
-		_data := NewStoreData()
-		var d *StoreData
-		var err error
-		d, err = v.applications.GetData()
-		if err != nil {
-			res.Errors = append(res.Errors, fmt.Sprintf("[cluster %s]: %s ", k, err.Error()))
-		}
-		_data.addAll(d)
-		d, err = v.deployments.GetData()
-		if err != nil {
-			res.Errors = append(res.Errors, fmt.Sprintf("[cluster %s]: %s ", k, err.Error()))
-		}
-		_data.addAll(d)
-		data[k] = _data
-	}
-
-	rowMap := map[string]*gridRow{}
-
-	// Check recursion limit
-	// TODO - first encountered group defines the group container - this should change
-	for _, v := range data {
-		for _, e := range v.entries {
-			group := e.Annotations[AnnotationDeployGridGroup]
-
-			if group == "" {
-				group = GroupNoGroup
-			}
-
-			name, nameOk := e.Annotations[AnnotationDeployGridName]
-			envs, envsOk := e.Annotations[AnnotationDeployGridEnvironment]
-
-			if nameOk && envsOk && e.Parent == "" {
-
-				row, ok := rowMap[name]
-				if !ok {
-					row = newGridRow(group, name)
-					rowMap[name] = row
-				}
-
-				for _, env := range strings.Split(envs, ",") {
-					cell, ok := row.cells[env]
-					if !ok {
-						cell = newGridCell()
-						row.cells[env] = cell
-					}
-
-					err := g.buildNodes(ctx, data, &cell.nodes, &e.Components)
-					if err != nil {
-						return nil, err
-					}
-				}
-
-			}
-		}
+	rowMap, err := g.collectRows(data)
+	if err != nil {
+		return nil, err
 	}
 
 	buildGrid(res, rowMap, g.environments)
@@ -349,7 +292,79 @@ func (g *gridService) Get(ctx context.Context) (*deploygrid.Grid, error) {
 	return res, nil
 }
 
-func (g *gridService) buildNodes(ctx context.Context, data map[string]*StoreData, nodes *[]gridNode, comps *[]repository.Component) error {
+// snapshotStores merges the application and deployment snapshots of every
+// cluster, recording store errors on the grid. Requires the read lock.
+func (g *gridService) snapshotStores(res *deploygrid.Grid) map[string]*StoreData {
+	data := map[string]*StoreData{}
+
+	for k, v := range g.stores {
+		merged := NewStoreData()
+		for _, st := range []*Store{v.applications, v.deployments} {
+			d, err := st.GetData()
+			if err != nil {
+				res.Errors = append(res.Errors, fmt.Sprintf("[cluster %s]: %s ", k, err.Error()))
+			}
+			merged.addAll(d)
+		}
+		data[k] = merged
+	}
+
+	return data
+}
+
+// collectRows turns every annotated top-level resource into a grid row with
+// one cell per environment it declares.
+// TODO - first encountered group defines the group container - this should change
+func (g *gridService) collectRows(data map[string]*StoreData) (map[string]*gridRow, error) {
+	rowMap := map[string]*gridRow{}
+
+	for _, v := range data {
+		for _, e := range v.entries {
+			name, nameOk := e.Annotations[AnnotationDeployGridName]
+			envs, envsOk := e.Annotations[AnnotationDeployGridEnvironment]
+
+			if !nameOk || !envsOk || e.Parent != "" {
+				continue
+			}
+
+			group := e.Annotations[AnnotationDeployGridGroup]
+			if group == "" {
+				group = GroupNoGroup
+			}
+
+			row, ok := rowMap[name]
+			if !ok {
+				row = newGridRow(group, name)
+				rowMap[name] = row
+			}
+
+			if err := g.fillCells(row, envs, data, e); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return rowMap, nil
+}
+
+// fillCells adds the resource's components to the row's cell for each
+// comma-separated environment.
+func (g *gridService) fillCells(row *gridRow, envs string, data map[string]*StoreData, e *repository.Resource) error {
+	for _, env := range strings.Split(envs, ",") {
+		cell, ok := row.cells[env]
+		if !ok {
+			cell = newGridCell()
+			row.cells[env] = cell
+		}
+
+		if err := g.buildNodes(data, &cell.nodes, &e.Components); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (g *gridService) buildNodes(data map[string]*StoreData, nodes *[]gridNode, comps *[]repository.Component) error {
 	for _, c := range *comps {
 		n := gridNode{
 			simpleName:    c.SimpleName,
@@ -366,9 +381,9 @@ func (g *gridService) buildNodes(ctx context.Context, data map[string]*StoreData
 			}
 			if cd, ok := data[clusterName]; ok {
 				if childs, ok := cd.parentMap[c.Name]; ok {
-					for childName, _ := range childs {
+					for childName := range childs {
 						if res, ok := cd.entries[childName]; ok {
-							err := g.buildNodes(ctx, data, &n.children, &res.Components)
+							err := g.buildNodes(data, &n.children, &res.Components)
 							if err != nil {
 								return err
 							}

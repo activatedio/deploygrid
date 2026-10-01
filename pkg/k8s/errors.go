@@ -8,7 +8,7 @@ import (
 
 // When this package is used it will inject a context error handler into the errors handlers
 func init() {
-	runtime.ErrorHandlers = append(runtime.ErrorHandlers, ContextChannelErrorHandler)
+	runtime.ErrorHandlers = append(runtime.ErrorHandlers, ContextChannelErrorHandler) //nolint:reassign // deliberate: route client-go errors to the watching store
 }
 
 type RuntimeError struct {
@@ -21,7 +21,9 @@ type errorReporter struct {
 	ErrorChannel chan RuntimeError
 }
 
-var errorReporterKey = struct{}{}
+type errorReporterKeyType struct{}
+
+var errorReporterKey = errorReporterKeyType{}
 
 func ContextChannelErrorHandler(ctx context.Context, err error, msg string, keysAndValues ...interface{}) {
 

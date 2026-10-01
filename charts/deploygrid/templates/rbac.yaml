@@ -5,9 +5,14 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: {{ include "deploygrid.fullname" . }}-clusterrole
 rules:
-  - apiGroups: ['*']
-    resources: ['*']
+  # Observation of workloads and delivery resources (read only).
+  - apiGroups: ['', 'apps', 'networking.k8s.io', 'argoproj.io']
+    resources: ['namespaces', 'deployments', 'statefulsets', 'daemonsets', 'ingresses', 'applications', 'secrets']
     verbs: ['get', 'watch', 'list']
+  # deploygrid custom resources, including status updates.
+  - apiGroups: ['deploygrid.activated.io']
+    resources: ['*']
+    verbs: ['get', 'watch', 'list', 'create', 'update', 'patch', 'delete']
 {{- if .Values.serviceAccount.create }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1

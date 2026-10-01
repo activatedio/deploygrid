@@ -39,7 +39,6 @@ func main() {
 	fmt.Println("# START CRD {{- if .Values.crds.enabled }}")
 
 	var dir []os.DirEntry
-	fmt.Println(path)
 	dir, err = os.ReadDir(path)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to open directory")
@@ -48,7 +47,7 @@ func main() {
 	var f *os.File
 	for _, e := range dir {
 		if !e.IsDir() {
-			f, err = os.Open(filepath.Join(path, e.Name()))
+			f, err = os.Open(filepath.Join(path, e.Name())) //nolint:gosec // path is a build-time flag, not user input
 			if err != nil {
 				log.Fatal().Err(err).Msg("failed to open file")
 			}

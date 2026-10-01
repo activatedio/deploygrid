@@ -6,14 +6,15 @@ import (
 	"github.com/activatedio/deploygrid/pkg/deploygrid"
 )
 
-type System struct {
-	Name        string
-	Description string
+// SystemService lists the Systems (grids) known to this server.
+type SystemService interface {
+	List(ctx context.Context) ([]*deploygrid.System, error)
+	// Get returns apiinframux.ErrNotFound (wrapped) when the system is unknown.
+	Get(ctx context.Context, name string) (*deploygrid.System, error)
 }
 
 type GridService interface {
 	Init()
-	//ListSystems(ctx context.Context) ([]System, error)
 	Get(ctx context.Context) (*deploygrid.Grid, error)
 }
 

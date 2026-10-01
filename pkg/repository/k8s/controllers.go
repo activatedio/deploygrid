@@ -4,9 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/activatedio/deploygrid/pkg/config"
-	"github.com/activatedio/deploygrid/pkg/generated/controllers/deploygrid.activated.io"
-	deploygridcontroller "github.com/activatedio/deploygrid/pkg/generated/controllers/deploygrid.activated.io/v1alpha1"
 	"github.com/rancher/lasso/pkg/cache"
 	"github.com/rancher/lasso/pkg/client"
 	"github.com/rancher/lasso/pkg/controller"
@@ -18,65 +15,88 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/workqueue"
+
+	"github.com/activatedio/deploygrid/pkg/config"
+	"github.com/activatedio/deploygrid/pkg/generated/controllers/deploygrid.activated.io"
+	deploygridcontroller "github.com/activatedio/deploygrid/pkg/generated/controllers/deploygrid.activated.io/v1alpha1"
 )
 
-type ControllersResult struct {
-	fx.Out
-	Controllers *Controllers
-}
-
+// Controllers exposes the wrangler controllers (clients) and informer caches
+// for every deploygrid custom resource in the control cluster.
+//
+// The caches are obtained before the factory starts: lasso creates an
+// informer lazily on first use, and only informers that exist when Start runs
+// are started and synced.
 type Controllers struct {
-	DeploygridSystems            deploygridcontroller.SystemController
-	DeploygridSystemsCache       deploygridcontroller.SystemCache
-	DeploygridMetadatas          deploygridcontroller.MetadataController
-	DeploygridMetadatasCache     deploygridcontroller.MetadataCache
-	DeploygridMetadataViews      deploygridcontroller.MetadataViewController
-	DeploygridMetadataViewsCache deploygridcontroller.MetadataViewCache
+	Systems                 deploygridcontroller.SystemController
+	SystemsCache            deploygridcontroller.SystemCache
+	Components              deploygridcontroller.ComponentController
+	ComponentsCache         deploygridcontroller.ComponentCache
+	Clusters                deploygridcontroller.ClusterController
+	ClustersCache           deploygridcontroller.ClusterCache
+	Configurations          deploygridcontroller.ConfigurationController
+	ConfigurationsCache     deploygridcontroller.ConfigurationCache
+	ConfigurationViews      deploygridcontroller.ConfigurationViewController
+	ConfigurationViewsCache deploygridcontroller.ConfigurationViewCache
 }
 
-func NewControllers(cfg *config.Main, cc clientcmd.ClientConfig, rc *rest.Config, lifecycle fx.Lifecycle) ControllersResult {
+// NewControllers connects to the control cluster described by cfg and starts
+// the shared informers with the fx lifecycle. Caches are synced before OnStart
+// returns, so services may read them as soon as the application is running.
+func NewControllers(cfg *config.ControlConfig, lifecycle fx.Lifecycle) (*Controllers, error) {
 
-	appCtx, err := newContext(cc, cfg.Namespace)
+	restConfig, err := controlRestConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	appCtx, err := newContext(restConfig, cfg.Namespace)
+	if err != nil {
+		return nil, err
+	}
 
 	lifecycle.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			log.Info().Msg("starting up app context")
-			// We pass our own context to ensure it is started
-			err := appCtx.start()
-			log.Info().Err(err).Msg("started up app context")
-			return err
+			log.Info().Str("namespace", cfg.Namespace).Msg("starting control cluster informers")
+			return appCtx.start(ctx)
 		},
-		OnStop: func(ctx context.Context) error {
+		OnStop: func(_ context.Context) error {
 			appCtx.stop()
 			return nil
 		},
 	})
 
-	if err != nil {
-		panic(err)
-	}
+	systems := appCtx.DG.System()
+	components := appCtx.DG.Component()
+	clusters := appCtx.DG.Cluster()
+	configurations := appCtx.DG.Configuration()
+	views := appCtx.DG.ConfigurationView()
 
-	log.Info().Msg("starting to reference controllers")
-	dgs := appCtx.DG.System()
-	dgm := appCtx.DG.Metadata()
-	dgmv := appCtx.DG.MetadataView()
-	log.Info().Msg("finished to referencing controllers")
+	return &Controllers{
+		Systems:                 systems,
+		SystemsCache:            systems.Cache(),
+		Components:              components,
+		ComponentsCache:         components.Cache(),
+		Clusters:                clusters,
+		ClustersCache:           clusters.Cache(),
+		Configurations:          configurations,
+		ConfigurationsCache:     configurations.Cache(),
+		ConfigurationViews:      views,
+		ConfigurationViewsCache: views.Cache(),
+	}, nil
+}
 
-	return ControllersResult{
-		Controllers: &Controllers{
-			DeploygridSystems:            dgs,
-			DeploygridSystemsCache:       dgs.Cache(),
-			DeploygridMetadatas:          dgm,
-			DeploygridMetadatasCache:     dgm.Cache(),
-			DeploygridMetadataViews:      dgmv,
-			DeploygridMetadataViewsCache: dgmv.Cache(),
-		},
+func controlRestConfig(cfg *config.ControlConfig) (*rest.Config, error) {
+	if cfg.KubeConfigPath == "" {
+		return rest.InClusterConfig()
 	}
+	rules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: cfg.KubeConfigPath}
+	overrides := &clientcmd.ConfigOverrides{CurrentContext: cfg.Context}
+	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, overrides).ClientConfig()
 }
 
 type appContext struct {
 	cancel                  context.CancelFunc
-	Client                  *rest.Config
 	SharedControllerFactory controller.SharedControllerFactory
 
 	DG deploygridcontroller.Interface
@@ -84,20 +104,22 @@ type appContext struct {
 	starters []start.Starter
 }
 
-func (a *appContext) start() error {
-	ctx, cancel := context.WithCancel(context.Background())
+// start runs the informers for the life of the application. The fx start
+// context is cancelled once OnStart returns, so only its values are kept.
+func (a *appContext) start(parent context.Context) error {
+	ctx, cancel := context.WithCancel(context.WithoutCancel(parent))
 	a.cancel = cancel
 	return start.All(ctx, 50, a.starters...)
 }
 
 func (a *appContext) stop() {
-	a.cancel()
-	// Give time for logging to flush
-	time.Sleep(2 * time.Second)
+	if a.cancel != nil {
+		a.cancel()
+	}
 }
 
 func controllerFactory(rest *rest.Config) (controller.SharedControllerFactory, error) {
-	rateLimit := workqueue.NewItemExponentialFailureRateLimiter(5*time.Millisecond, 60*time.Second)
+	rateLimit := workqueue.NewTypedItemExponentialFailureRateLimiter[any](5*time.Millisecond, 60*time.Second)
 	clientFactory, err := client.NewSharedClientFactory(rest, nil)
 	if err != nil {
 		return nil, err
@@ -110,14 +132,8 @@ func controllerFactory(rest *rest.Config) (controller.SharedControllerFactory, e
 	}), nil
 }
 
-func newContext(cfg clientcmd.ClientConfig, namespace string) (*appContext, error) {
+func newContext(cl *rest.Config, namespace string) (*appContext, error) {
 
-	log.Info().Str("namespace", namespace).Msg("creating appCtx")
-
-	cl, err := cfg.ClientConfig()
-	if err != nil {
-		return nil, err
-	}
 	cl.RateLimiter = ratelimit.None
 
 	scf, err := controllerFactory(cl)
@@ -132,16 +148,10 @@ func newContext(cfg clientcmd.ClientConfig, namespace string) (*appContext, erro
 	if err != nil {
 		return nil, err
 	}
-	dgv := dg.Deploygrid().V1alpha1()
 
 	return &appContext{
-		Client:                  cl,
 		SharedControllerFactory: scf,
-
-		DG: dgv,
-
-		starters: []start.Starter{
-			dg,
-		},
+		DG:                      dg.Deploygrid().V1alpha1(),
+		starters:                []start.Starter{dg},
 	}, nil
 }

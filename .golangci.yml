@@ -79,6 +79,12 @@ linters:
       for-loops: false
     unparam:
       check-exported: false
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
   exclusions:
     generated: lax
     rules:
@@ -112,6 +118,10 @@ linters:
       - linters:
           - musttag
         path: k8s.io/
+      - linters:
+          - revive
+        path: pkg/apiinfra/util/
+        text: meaningless package names
     paths:
       - third_party$
       - builtin$
@@ -129,8 +139,7 @@ formatters:
       sections:
         - standard
         - default
-        - prefix(github.com/crossplane)
-        - prefix(github.com/crossplane-contrib)
+        - prefix(github.com/activatedio)
         - blank
         - dot
       custom-order: true

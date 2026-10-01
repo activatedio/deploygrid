@@ -4,24 +4,27 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/activatedio/deploygrid/pkg/config"
 	"github.com/gorilla/mux"
 	"go.uber.org/fx"
+
+	"github.com/activatedio/deploygrid/pkg/config"
 )
 
 type RouterParams struct {
 	fx.In
 	SwaggerConfig *config.SwaggerConfig
 	Grid          Grid
-	//Metadata      Metadata
-	Health Health
+	Systems       Systems
+	Health        Health
 }
 
 const (
-	PathBase     = "/api"
-	PathHealth   = PathBase + "/healthz"
-	PathGrid     = PathBase + "/grid"
-	PathMetadata = PathBase + "/metadata"
+	PathBase       = "/api"
+	PathHealth     = PathBase + "/healthz"
+	PathGrid       = PathBase + "/grid"
+	PathSystems    = PathBase + "/systems"
+	PathSystem     = PathSystems + "/{" + PathParamSystem + "}"
+	PathSystemGrid = PathSystem + "/grid"
 )
 
 func NewRouter(params RouterParams) *mux.Router {
@@ -33,12 +36,11 @@ func NewRouter(params RouterParams) *mux.Router {
 	r := mux.NewRouter()
 
 	r.HandleFunc(PathHealth, params.Health.Healthz).Methods(http.MethodGet)
+	// v1 compatibility: the grid of the first/default system
 	r.HandleFunc(PathGrid, params.Grid.Get).Methods(http.MethodGet)
-	/*
-		r.HandleFunc(PathMetadata, params.Metadata.Get).Methods(http.MethodGet)
-		r.HandleFunc(PathMetadata, params.Metadata.Post).Methods(http.MethodPost)
-
-	*/
+	r.HandleFunc(PathSystems, params.Systems.List).Methods(http.MethodGet)
+	r.HandleFunc(PathSystem, params.Systems.Get).Methods(http.MethodGet)
+	r.HandleFunc(PathSystemGrid, params.Systems.Grid).Methods(http.MethodGet)
 
 	_su := params.SwaggerConfig.SwaggerUiUrl
 

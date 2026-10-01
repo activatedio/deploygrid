@@ -3,12 +3,13 @@ package controller
 import (
 	"net/http"
 
+	"github.com/swaggest/openapi-go/openapi3"
+	"k8s.io/apimachinery/pkg/util/json"
+
 	apiinframux "github.com/activatedio/deploygrid/pkg/apiinfra/mux"
 	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
 	"github.com/activatedio/deploygrid/pkg/deploygrid"
 	"github.com/activatedio/deploygrid/pkg/service"
-	"github.com/swaggest/openapi-go/openapi3"
-	"k8s.io/apimachinery/pkg/util/json"
 )
 
 type grid struct {
@@ -23,8 +24,8 @@ func (d *grid) OpenapiBuilder() apiinframux.OpenapiBuilder {
 		if err != nil {
 			return err
 		}
-		oc.AddRespStructure(&deploygrid.Grid{}, apiinframux.ContentOptionsJsonSuccess...)
-		oc.AddRespStructure(&apiinframux.Error{}, apiinframux.ContentOptionsJsonDefault...)
+		oc.AddRespStructure(&deploygrid.Grid{}, apiinframux.ContentOptionsJSONSuccess...)
+		oc.AddRespStructure(&apiinframux.Error{}, apiinframux.ContentOptionsJSONDefault...)
 
 		return r.AddOperation(oc)
 	}

@@ -30,8 +30,10 @@ func init() {
 }
 
 type Interface interface {
-	Metadata() MetadataController
-	MetadataView() MetadataViewController
+	Cluster() ClusterController
+	Component() ComponentController
+	Configuration() ConfigurationController
+	ConfigurationView() ConfigurationViewController
 	System() SystemController
 }
 
@@ -45,12 +47,20 @@ type version struct {
 	controllerFactory controller.SharedControllerFactory
 }
 
-func (v *version) Metadata() MetadataController {
-	return generic.NewController[*v1alpha1.Metadata, *v1alpha1.MetadataList](schema.GroupVersionKind{Group: "deploygrid.activated.io", Version: "v1alpha1", Kind: "Metadata"}, "metadatas", true, v.controllerFactory)
+func (v *version) Cluster() ClusterController {
+	return generic.NewController[*v1alpha1.Cluster, *v1alpha1.ClusterList](schema.GroupVersionKind{Group: "deploygrid.activated.io", Version: "v1alpha1", Kind: "Cluster"}, "clusters", true, v.controllerFactory)
 }
 
-func (v *version) MetadataView() MetadataViewController {
-	return generic.NewController[*v1alpha1.MetadataView, *v1alpha1.MetadataViewList](schema.GroupVersionKind{Group: "deploygrid.activated.io", Version: "v1alpha1", Kind: "MetadataView"}, "metadataviews", true, v.controllerFactory)
+func (v *version) Component() ComponentController {
+	return generic.NewController[*v1alpha1.Component, *v1alpha1.ComponentList](schema.GroupVersionKind{Group: "deploygrid.activated.io", Version: "v1alpha1", Kind: "Component"}, "components", true, v.controllerFactory)
+}
+
+func (v *version) Configuration() ConfigurationController {
+	return generic.NewController[*v1alpha1.Configuration, *v1alpha1.ConfigurationList](schema.GroupVersionKind{Group: "deploygrid.activated.io", Version: "v1alpha1", Kind: "Configuration"}, "configurations", true, v.controllerFactory)
+}
+
+func (v *version) ConfigurationView() ConfigurationViewController {
+	return generic.NewController[*v1alpha1.ConfigurationView, *v1alpha1.ConfigurationViewList](schema.GroupVersionKind{Group: "deploygrid.activated.io", Version: "v1alpha1", Kind: "ConfigurationView"}, "configurationviews", true, v.controllerFactory)
 }
 
 func (v *version) System() SystemController {

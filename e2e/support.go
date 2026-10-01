@@ -6,12 +6,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/activatedio/deploygrid/pkg/apiinfra/viper"
-	deploygridfx "github.com/activatedio/deploygrid/pkg/fx"
-	"github.com/activatedio/deploygrid/pkg/runner"
 	"github.com/go-resty/resty/v2"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/fx"
+
+	apiinfraconfig "github.com/activatedio/deploygrid/pkg/apiinfra/config"
+	"github.com/activatedio/deploygrid/pkg/config"
+	deploygridfx "github.com/activatedio/deploygrid/pkg/fx"
+	"github.com/activatedio/deploygrid/pkg/runner"
 )
 
 func json(r *resty.Request) *resty.Request {
@@ -36,36 +38,29 @@ func check(err error) {
 	}
 }
 
-func checkResp(resp *resty.Response, err error) {
-	if err != nil {
-		panic(err)
-	}
-	if resp == nil {
-		panic("response is nil")
-	}
-	if resp.IsError() {
-		panic(resp.String())
-	}
-}
-
 func doTest(t *testing.T, configPath string, callback func(t *testing.T, baseURL string)) {
 
 	fxctx := context.Background()
 
-	var baseUrl string
+	var baseURL string
 
-	v := viper.NewViper(viper.WithConfigPath(configPath))
+	m := config.NewMainConfig(apiinfraconfig.NewConfig(configPath))
 
-	app := fx.New(deploygridfx.Index(v),
+	app := fx.New(deploygridfx.Index(m),
 		fx.Invoke(func(server *runner.RunningServer) {
-			baseUrl = fmt.Sprintf("http://%s:%d", server.Host, server.Port)
+			baseURL = fmt.Sprintf("http://%s:%d", server.Host, server.Port)
 			log.Info().Str("host", server.Host).Int("port", server.Port).Msg("Starting server")
 		}))
 	check(app.Start(fxctx))
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_ = app.Stop(ctx)
+	})
 
-	waitForHealth(baseUrl)
+	waitForHealth(baseURL)
 
-	callback(t, baseUrl)
+	callback(t, baseURL)
 
 }
 

@@ -5,10 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/activatedio/deploygrid/pkg/repository"
-	"github.com/activatedio/deploygrid/pkg/repository/k8s"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/dynamic"
+
+	"github.com/activatedio/deploygrid/pkg/repository"
+	"github.com/activatedio/deploygrid/pkg/repository/k8s"
 )
 
 func TestResources(t *testing.T) {
@@ -55,7 +56,7 @@ func TestResources(t *testing.T) {
 
 					for _, rec := range recs {
 						assert.Equal(t, repository.ResourceStoreEventReplace, rec.EventType)
-						assert.True(t, len(rec.ResourceArray) > 6)
+						assert.Greater(t, len(rec.ResourceArray), 6)
 					}
 
 				}, 5*time.Second, 500*time.Millisecond)
@@ -67,7 +68,7 @@ func TestResources(t *testing.T) {
 	}
 
 	for k, v := range cases {
-		t.Run(k, func(t *testing.T) {
+		t.Run(k, func(_ *testing.T) {
 
 			cl, ctor := v.arrange()
 

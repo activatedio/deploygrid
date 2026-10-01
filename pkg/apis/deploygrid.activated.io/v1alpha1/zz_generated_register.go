@@ -27,9 +27,11 @@ import (
 )
 
 var (
-	MetadataResourceName     = "metadatas"
-	MetadataViewResourceName = "metadataviews"
-	SystemResourceName       = "systems"
+	ClusterResourceName           = "clusters"
+	ComponentResourceName         = "components"
+	ConfigurationResourceName     = "configurations"
+	ConfigurationViewResourceName = "configurationviews"
+	SystemResourceName            = "systems"
 )
 
 // SchemeGroupVersion is group version used to register these objects
@@ -53,10 +55,14 @@ var (
 // Adds the list of known types to Scheme.
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
-		&Metadata{},
-		&MetadataList{},
-		&MetadataView{},
-		&MetadataViewList{},
+		&Cluster{},
+		&ClusterList{},
+		&Component{},
+		&ComponentList{},
+		&Configuration{},
+		&ConfigurationList{},
+		&ConfigurationView{},
+		&ConfigurationViewList{},
 		&System{},
 		&SystemList{},
 	)
