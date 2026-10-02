@@ -20,6 +20,12 @@ func TestE2E(t *testing.T) {
 
 		r := resty.New().SetBaseURL(baseURL)
 
+		// kind-app-cluster-2 is not watched by the server: run a collector
+		// against it, authenticating with the token the server generated for
+		// the agent-mode Cluster resource.
+		token := waitForToken(t, "../.kind/kubeconfig-ops-cluster-1.yaml", "deploygrid", "kind-app-cluster-2-collector-token")
+		startCollector(t, baseURL+"/api", "kind-app-cluster-2", token, "../.kind/kubeconfig-app-cluster-2.yaml")
+
 		a.EventuallyWithT(func(c *assert.CollectT) {
 
 			// v1 compatibility endpoint: grid of the first system
@@ -61,9 +67,11 @@ func TestE2E(t *testing.T) {
 			require.Equal(c, "kind-app-cluster-1", dev.Cluster)
 			require.Len(c, dev.Artifacts, 3)
 			require.Len(c, dev.Links, 1)
+			// stage arrives only through the collector
 			stage := appA.Cells["stage"]
 			require.NotNil(c, stage, "stage cell: %v", appA.Cells)
 			require.Equal(c, "kind-app-cluster-2", stage.Cluster)
+			require.Equal(c, "1.16.1", stage.Version)
 
 			rows := &deploygrid.GridRowList{}
 			resp, err = json(r.R()).SetError(e).SetResult(rows).Get("/api/systems/apps/components")
@@ -93,7 +101,21 @@ func TestE2E(t *testing.T) {
 
 			log.Info().Msg("test succeeded")
 
-		}, 5*time.Second, time.Second)
+		}, 20*time.Second, time.Second)
+
+		// the server records the collector heartbeat on the Cluster resource
+		a.EventuallyWithT(func(c *assert.CollectT) {
+			cl := getCluster(t, "../.kind/kubeconfig-ops-cluster-1.yaml", "deploygrid", "kind-app-cluster-2")
+			require.NotNil(c, cl.Status.LastHeartbeatTime)
+			require.Equal(c, "kind-app-cluster-2", cl.Name)
+			connected := false
+			for _, cond := range cl.Status.Conditions {
+				if cond.Type == "Connected" && cond.Status == "True" {
+					connected = true
+				}
+			}
+			require.True(c, connected, "conditions: %v", cl.Status.Conditions)
+		}, 40*time.Second, 2*time.Second)
 
 	})
 

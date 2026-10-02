@@ -24,6 +24,9 @@ data:
           {{- if .address }}
           address: {{ .address }}
           {{- end }}
+          {{- if .mode }}
+          mode: {{ .mode }}
+          {{- end }}
           {{- if .local }}
           local: true
           {{- end }}

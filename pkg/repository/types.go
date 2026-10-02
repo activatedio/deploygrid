@@ -8,6 +8,7 @@ import (
 const (
 	KindApplication = "argocd-application"
 	KindDeployment  = "deployment"
+	KindIngress     = "ingress"
 )
 
 // Component (version) kinds.
@@ -29,19 +30,19 @@ const (
 // or a delivery revision.
 type Component struct {
 	// Name is unique within the resource (container name, "chart", "revision").
-	Name    string
-	Kind    string
-	Version string
+	Name    string `json:"name"`
+	Kind    string `json:"kind"`
+	Version string `json:"version"`
 	// Image is the full image reference for containers.
-	Image string
+	Image string `json:"image,omitempty"`
 }
 
 // ClusterLocation is where a delivery resource (Argo CD Application) places
 // its workloads.
 type ClusterLocation struct {
-	Server    string
-	Name      string
-	Namespace string
+	Server    string `json:"server,omitempty"`
+	Name      string `json:"name,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
 }
 
 // Resource is an observed artifact: a workload or a delivery resource,
@@ -50,27 +51,27 @@ type ClusterLocation struct {
 type Resource struct {
 	// Name is the store key, unique within a cluster:
 	// applications/<name> or namespaces/<ns>/deployments/<name>.
-	Name       string
-	Kind       string
-	Namespace  string
-	ObjectName string
+	Name       string `json:"name"`
+	Kind       string `json:"kind"`
+	Namespace  string `json:"namespace,omitempty"`
+	ObjectName string `json:"objectName"`
 	// Parent is the store key of the delivery resource that manages this one,
 	// if known (for Helm-managed workloads: applications/<release>).
-	Parent      string
-	Labels      map[string]string
-	Annotations map[string]string
+	Parent      string            `json:"parent,omitempty"`
+	Labels      map[string]string `json:"labels,omitempty"`
+	Annotations map[string]string `json:"annotations,omitempty"`
 	// Components are the running (actual) versions.
-	Components []Component
+	Components []Component `json:"components,omitempty"`
 	// DesiredVersion is what the delivery source asks for (Argo CD
 	// targetRevision).
-	DesiredVersion string
+	DesiredVersion string `json:"desiredVersion,omitempty"`
 	// SyncRevision is the revision the delivery source last applied.
-	SyncRevision string
+	SyncRevision string `json:"syncRevision,omitempty"`
 	// ChartVersion is the Helm chart version stamped on a workload.
-	ChartVersion string
-	Health       string
-	Destination  *ClusterLocation
-	Hosts        []string
+	ChartVersion string           `json:"chartVersion,omitempty"`
+	Health       string           `json:"health,omitempty"`
+	Destination  *ClusterLocation `json:"destination,omitempty"`
+	Hosts        []string         `json:"hosts,omitempty"`
 }
 
 type ResourceStore interface {
@@ -90,7 +91,25 @@ type ClusterAwareAccessor[R any] interface {
 	Get(ctx context.Context, clusterName string) (R, error)
 }
 
+// Resources are the repositories collected from one cluster, keyed by the
+// resource kind they produce.
 type Resources struct {
 	Applications ResourceRepository
 	Deployment   ResourceRepository
+	Ingress      ResourceRepository
+}
+
+// ByKind returns the repositories keyed by the kind each one emits.
+func (r *Resources) ByKind() map[string]ResourceRepository {
+	out := map[string]ResourceRepository{}
+	if r.Applications != nil {
+		out[KindApplication] = r.Applications
+	}
+	if r.Deployment != nil {
+		out[KindDeployment] = r.Deployment
+	}
+	if r.Ingress != nil {
+		out[KindIngress] = r.Ingress
+	}
+	return out
 }

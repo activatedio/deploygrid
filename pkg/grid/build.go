@@ -164,10 +164,64 @@ func Build(in Input) *Result {
 // assemble creates a row for every declared component and every discovered
 // one, fills cells from placements and collects unassigned artifacts.
 func (b *builder) assemble(placements []*placement) (rows map[string]*deploygrid.GridRow, rowGroup map[string]string, unassigned []*deploygrid.Artifact) {
-	rows = map[string]*deploygrid.GridRow{}
-	rowGroup = map[string]string{}
+	rows, rowGroup = b.declaredRows()
 	cells := map[string]map[string][]*placement{} // component → env → placements
 
+	var hostOnly []*placement
+	for _, p := range placements {
+		if p.root.Kind == repository.KindIngress {
+			// Ingresses never form rows; they add hosts to the cell of the
+			// component they belong to.
+			if p.component != "" && p.env != "" {
+				hostOnly = append(hostOnly, p)
+			}
+			continue
+		}
+		if a := b.place(p, rows, rowGroup, cells); a != nil {
+			unassigned = append(unassigned, a)
+		}
+	}
+
+	for name, row := range rows {
+		for env, ps := range cells[name] {
+			row.Cells[env] = b.cell(row.Component, b.declared[name], env, ps)
+		}
+	}
+	b.addHosts(rows, hostOnly)
+	return rows, rowGroup, unassigned
+}
+
+// place files a placement under its row and environment, creating a
+// discovered row when needed. It returns an artifact when the placement
+// cannot be shown on the grid.
+func (b *builder) place(p *placement, rows map[string]*deploygrid.GridRow, rowGroup map[string]string, cells map[string]map[string][]*placement) *deploygrid.Artifact {
+	if p.component == "" {
+		return b.artifact(p.root, p.rootHost, p.env)
+	}
+	if p.env == "" {
+		b.warn(fmt.Sprintf("%s %s/%s matched component %q but its environment could not be resolved",
+			p.root.Kind, p.rootHost, p.root.ObjectName, p.component))
+		if _, declared := rows[p.component]; !declared {
+			return b.artifact(p.root, p.rootHost, "")
+		}
+		return nil
+	}
+	if _, ok := rows[p.component]; !ok {
+		rows[p.component] = discoveredRow(p)
+		rowGroup[p.component] = firstNonEmpty(p.group, GroupDefault)
+	}
+	if cells[p.component] == nil {
+		cells[p.component] = map[string][]*placement{}
+	}
+	cells[p.component][p.env] = append(cells[p.component][p.env], p)
+	return nil
+}
+
+// declaredRows creates an empty row for every Component declared in the
+// system.
+func (b *builder) declaredRows() (map[string]*deploygrid.GridRow, map[string]string) {
+	rows := map[string]*deploygrid.GridRow{}
+	rowGroup := map[string]string{}
 	for name, c := range b.declared {
 		rows[name] = &deploygrid.GridRow{
 			Component: &deploygrid.ComponentRef{
@@ -180,44 +234,41 @@ func (b *builder) assemble(placements []*placement) (rows map[string]*deploygrid
 		}
 		rowGroup[name] = firstNonEmpty(c.Spec.Group, GroupDefault)
 	}
+	return rows, rowGroup
+}
 
-	for _, p := range placements {
-		if p.component == "" {
-			unassigned = append(unassigned, b.artifact(p.root, p.rootHost, p.env))
+// discoveredRow creates a row for a component no resource declares.
+func discoveredRow(p *placement) *deploygrid.GridRow {
+	return &deploygrid.GridRow{
+		Component: &deploygrid.ComponentRef{
+			Name:        p.component,
+			DisplayName: firstNonEmpty(p.display, p.component),
+			Kind:        string(p.discovered),
+			Discovered:  true,
+		},
+		Cells: map[string]*deploygrid.Cell{},
+	}
+}
+
+// addHosts merges standalone ingress hosts into existing cells and
+// re-renders their links.
+func (b *builder) addHosts(rows map[string]*deploygrid.GridRow, hostOnly []*placement) {
+	for _, p := range hostOnly {
+		row, ok := rows[p.component]
+		if !ok {
 			continue
 		}
-		if p.env == "" {
-			b.warn(fmt.Sprintf("%s %s/%s matched component %q but its environment could not be resolved",
-				p.root.Kind, p.rootHost, p.root.ObjectName, p.component))
-			if _, declared := rows[p.component]; !declared {
-				unassigned = append(unassigned, b.artifact(p.root, p.rootHost, ""))
-			}
+		cell, ok := row.Cells[p.env]
+		if !ok {
 			continue
 		}
-		if _, ok := rows[p.component]; !ok {
-			rows[p.component] = &deploygrid.GridRow{
-				Component: &deploygrid.ComponentRef{
-					Name:        p.component,
-					DisplayName: firstNonEmpty(p.display, p.component),
-					Kind:        string(p.discovered),
-					Discovered:  true,
-				},
-				Cells: map[string]*deploygrid.Cell{},
-			}
-			rowGroup[p.component] = firstNonEmpty(p.group, GroupDefault)
-		}
-		if cells[p.component] == nil {
-			cells[p.component] = map[string][]*placement{}
-		}
-		cells[p.component][p.env] = append(cells[p.component][p.env], p)
-	}
-
-	for name, row := range rows {
-		for env, ps := range cells[name] {
-			row.Cells[env] = b.cell(row.Component, b.declared[name], env, ps)
+		cell.Hosts = append(cell.Hosts, p.root.Hosts...)
+		slices.Sort(cell.Hosts)
+		cell.Hosts = slices.Compact(cell.Hosts)
+		if c, declared := b.declared[p.component]; declared {
+			cell.Links = b.links(c, p.env, cell)
 		}
 	}
-	return rows, rowGroup, unassigned
 }
 
 // collect turns observed resources into placements. Delivery resources
@@ -443,7 +494,7 @@ func (b *builder) cell(ref *deploygrid.ComponentRef, declared *v1alpha1.Componen
 	cell := &deploygrid.Cell{Health: repository.HealthUnknown}
 
 	versions := map[string]bool{}
-	healths := []string{}
+	var healths []string
 	for i, p := range ps {
 		actual := actualVersion(kind, ref.Name, p)
 		if i == 0 {
@@ -455,13 +506,9 @@ func (b *builder) cell(ref *deploygrid.ComponentRef, declared *v1alpha1.Componen
 		if actual != "" {
 			versions[actual] = true
 		}
-		healths = append(healths, p.root.Health)
-		cell.Artifacts = append(cell.Artifacts, b.artifact(p.root, p.rootHost, ""))
-		for _, c := range p.children {
-			healths = append(healths, c.Health)
-			cell.Artifacts = append(cell.Artifacts, b.artifact(c, p.cluster, ""))
-		}
-		cell.Hosts = append(cell.Hosts, p.root.Hosts...)
+		healths = append(healths, placementHealth(p)...)
+		cell.Artifacts = append(cell.Artifacts, b.placementArtifacts(p)...)
+		cell.Hosts = append(cell.Hosts, placementHosts(p)...)
 	}
 	if cell.Version == "" {
 		for v := range versions {
@@ -479,6 +526,34 @@ func (b *builder) cell(ref *deploygrid.ComponentRef, declared *v1alpha1.Componen
 		cell.Links = b.links(declared, env, cell)
 	}
 	return cell
+}
+
+// placementHealth lists the health of the root and its workloads; ingresses
+// carry no health.
+func placementHealth(p *placement) []string {
+	out := []string{p.root.Health}
+	for _, c := range p.children {
+		if c.Kind != repository.KindIngress {
+			out = append(out, c.Health)
+		}
+	}
+	return out
+}
+
+func (b *builder) placementArtifacts(p *placement) []*deploygrid.Artifact {
+	out := []*deploygrid.Artifact{b.artifact(p.root, p.rootHost, "")}
+	for _, c := range p.children {
+		out = append(out, b.artifact(c, p.cluster, ""))
+	}
+	return out
+}
+
+func placementHosts(p *placement) []string {
+	out := append([]string(nil), p.root.Hosts...)
+	for _, c := range p.children {
+		out = append(out, c.Hosts...)
+	}
+	return out
 }
 
 // observedVersions summarises the versions found on a placement.

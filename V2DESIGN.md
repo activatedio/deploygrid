@@ -391,12 +391,31 @@ Not yet in phase 1: ingress hosts, Helm release Secrets, the per-request
 rebuild (the grid is still computed on each GET; fine at current scale, the
 index in §4.2 is the fix when it is not), and `/history`.
 
-**Phase 2 — collector mode (next).**
-`deploygrid collector` command, `HTTPSink`, `POST /observations`, token auth
-from `Cluster.spec.collection.tokenSecretRef`, heartbeat → `Cluster.status`,
-collector sub-chart, distroless image. Ingress and Helm release sources.
+**Phase 2 — collector mode (done, 2026-10-01).**
+`deploygrid collector` watches a cluster with the same repositories the
+server uses and pushes `Observation`s to `POST /api/observations`: a
+snapshot per kind on first sync and after any failure, coalesced deltas
+otherwise, a heartbeat when idle, and a full resync when the server asks
+for one (for example after it restarted). The server keeps every cluster's
+state in a `SourceRegistry` that server-side watches and pushed
+observations both feed. Tokens: a static `token` on an agent-mode entry in
+`clusters:`, or, with a control cluster, the Secret referenced by
+`Cluster.spec.collection.tokenSecretRef`; the server generates
+`<cluster>-collector-token` for agent-mode Clusters that reference none.
+The status writer sets the `Connected` condition and heartbeat fields on
+every `Cluster`. Ingress hosts are collected and shown on cells.
+`charts/deploygrid-collector` installs the collector with a read-only
+ClusterRole and the token Secret. The e2e test feeds one of the three kind
+clusters through an in-process collector authenticated with the generated
+token.
 
-**Phase 3 — configurations, history, UI.**
+Deferred from phase 2: the distroless image (the server image still carries
+awscli for kubeconfig-mode EKS clusters; drop it once those move to
+collectors) and Helm release Secrets as a source (the `helm.sh/chart` label
+already carries the chart version; decoding release Secrets needs cluster-wide
+Secret access, which the collector role deliberately does not have).
+
+**Phase 3 — configurations, history, UI (next).**
 Configuration merge and ConfigurationView rendering endpoints; history ring +
 Events; component detail page; system switcher; drift filter.
 

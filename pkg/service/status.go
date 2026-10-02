@@ -6,8 +6,11 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"go.uber.org/fx"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/activatedio/deploygrid/pkg/apis/deploygrid.activated.io/v1alpha1"
 	"github.com/activatedio/deploygrid/pkg/config"
@@ -20,11 +23,18 @@ import (
 // visible through kubectl and consumable by other controllers.
 type StatusWriter struct {
 	grids       GridService
+	registry    *SourceRegistry
 	controllers *k8s.Controllers
 	namespace   string
 	interval    time.Duration
-	cancel      context.CancelFunc
+	// staleAfter is how long without a heartbeat before a pushed cluster is
+	// reported as disconnected.
+	staleAfter time.Duration
+	cancel     context.CancelFunc
 }
+
+// ConditionConnected is set on Cluster resources.
+const ConditionConnected = "Connected"
 
 func (w *StatusWriter) run(ctx context.Context) {
 	t := time.NewTicker(w.interval)
@@ -43,6 +53,9 @@ func (w *StatusWriter) run(ctx context.Context) {
 
 // Sync writes one round of status updates.
 func (w *StatusWriter) Sync(ctx context.Context) error {
+	if err := EnsureTokenSecrets(w.controllers, w.namespace); err != nil {
+		log.Error().Err(err).Msg("ensure collector tokens")
+	}
 	results, err := w.grids.BuildAll(ctx)
 	if err != nil {
 		return err
@@ -54,7 +67,60 @@ func (w *StatusWriter) Sync(ctx context.Context) error {
 			w.syncComponent(name, statuses, now)
 		}
 	}
+	w.syncClusters(now)
 	return nil
+}
+
+// syncClusters records connectivity on every Cluster resource: pushed
+// clusters from their heartbeat, pulled clusters from the registry.
+func (w *StatusWriter) syncClusters(now metav1.Time) {
+	clusters, err := w.controllers.ClustersCache.List(w.namespace, labels.Everything())
+	if err != nil {
+		log.Error().Err(err).Msg("list clusters")
+		return
+	}
+	heartbeats := w.registry.Heartbeats()
+	for _, c := range clusters {
+		cond := metav1.Condition{Type: ConditionConnected, ObservedGeneration: c.Generation}
+		updated := c.DeepCopy()
+		if hb, ok := heartbeats[c.Name]; ok && hb.Pushed {
+			updated.Status.LastHeartbeatTime = &metav1.Time{Time: hb.LastSeen}
+			updated.Status.CollectorVersion = hb.CollectorVersion
+			updated.Status.KubernetesVersion = hb.KubernetesVersion
+			if now.Sub(hb.LastSeen) > w.staleAfter {
+				cond.Status = metav1.ConditionFalse
+				cond.Reason = "HeartbeatStale"
+				cond.Message = "no observation received since " + hb.LastSeen.UTC().Format(time.RFC3339)
+			} else {
+				cond.Status = metav1.ConditionTrue
+				cond.Reason = "Receiving"
+				cond.Message = "collector is pushing observations"
+			}
+		} else {
+			switch {
+			case w.registry.HasError(c.Name):
+				cond.Status = metav1.ConditionFalse
+				cond.Reason = "ConnectionFailed"
+				cond.Message = "the server could not connect; see grid errors"
+			case w.registry.Connected(c.Name):
+				cond.Status = metav1.ConditionTrue
+				cond.Reason = "Watching"
+				cond.Message = "the server is watching the cluster"
+			default:
+				cond.Status = metav1.ConditionUnknown
+				cond.Reason = "NoSource"
+				cond.Message = "no watch configured and no collector has reported"
+			}
+		}
+		meta.SetStatusCondition(&updated.Status.Conditions, cond)
+		updated.Status.ObservedGeneration = c.Generation
+		if equality.Semantic.DeepEqual(updated.Status, c.Status) {
+			continue
+		}
+		if _, err := w.controllers.Clusters.UpdateStatus(updated); err != nil {
+			log.Error().Err(err).Str("cluster", c.Name).Msg("update cluster status")
+		}
+	}
 }
 
 func (w *StatusWriter) syncSystem(name string, res *grid.Result, now metav1.Time) {
@@ -151,6 +217,7 @@ func (w *StatusWriter) syncComponent(name string, cur []v1alpha1.ComponentEnviro
 type StatusWriterParams struct {
 	fx.In
 	Grids       GridService
+	Registry    *SourceRegistry
 	Controllers *k8s.Controllers
 	Control     *config.ControlConfig
 	Lifecycle   fx.Lifecycle
@@ -160,12 +227,18 @@ type StatusWriterParams struct {
 func NewStatusWriter(params StatusWriterParams) *StatusWriter {
 	w := &StatusWriter{
 		grids:       params.Grids,
+		registry:    params.Registry,
 		controllers: params.Controllers,
 		namespace:   params.Control.Namespace,
 		interval:    15 * time.Second,
+		staleAfter:  2 * time.Minute,
 	}
 	params.Lifecycle.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
+			// Tokens must exist before the first collector tries to connect.
+			if err := EnsureTokenSecrets(w.controllers, w.namespace); err != nil {
+				log.Error().Err(err).Msg("ensure collector tokens")
+			}
 			runCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
 			w.cancel = cancel
 			go w.run(runCtx)

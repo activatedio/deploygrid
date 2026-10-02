@@ -23,6 +23,7 @@ func Index(m *config.Main) fx.Option {
 		catalog = fx.Options(
 			fx.Provide(k8s.NewControllers),
 			fx.Provide(service.NewControlCatalog),
+			fx.Provide(fx.Annotate(service.NewControlTokenResolver, fx.ResultTags(`group:"token_resolvers"`))),
 			fx.Provide(service.NewStatusWriter),
 			fx.Invoke(func(*service.StatusWriter) {}),
 		)
@@ -45,14 +46,17 @@ func Index(m *config.Main) fx.Option {
 		fx.Provide(
 			runner.NewServer,
 			apiinframux.NewOpenapi,
+			service.NewSourceRegistry,
 			service.NewSystemService,
 			service.NewGridService,
+			service.NewObservationService,
+			fx.Annotate(service.NewConfigTokenResolver, fx.ResultTags(`group:"token_resolvers"`)),
 		),
 		fx.Invoke(func(service service.GridService) {
 			service.Init()
 		}),
-		fx.Invoke(func(r *mux.Router, o apiinframux.Openapi, g controller.Grid, s controller.Systems) error {
-			return o.Mount(r, g.OpenapiBuilder(), s.OpenapiBuilder())
+		fx.Invoke(func(r *mux.Router, o apiinframux.Openapi, g controller.Grid, s controller.Systems, ob controller.Observations) error {
+			return o.Mount(r, g.OpenapiBuilder(), s.OpenapiBuilder(), ob.OpenapiBuilder())
 		}),
 	)
 }

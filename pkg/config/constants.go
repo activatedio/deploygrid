@@ -9,4 +9,8 @@ const (
 	EnvConfigPath = "CONFIG_PATH"
 
 	DefaultControlNamespace = "deploygrid"
+
+	ClusterModeKubeconfig = "kubeconfig"
+	ClusterModeLocal      = "local"
+	ClusterModeAgent      = "agent"
 )

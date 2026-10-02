@@ -186,5 +186,6 @@ func NewResources(client dynamic.Interface) *repository.Resources {
 	return &repository.Resources{
 		Applications: NewApplicationRepository(client),
 		Deployment:   NewDeploymentRepository(client),
+		Ingress:      NewIngressRepository(client),
 	}
 }

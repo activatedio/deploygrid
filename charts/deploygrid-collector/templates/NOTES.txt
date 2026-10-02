@@ -1,0 +1,8 @@
+The collector is pushing observations for cluster "{{ .Values.cluster.name }}"
+to {{ .Values.server.url }}.
+
+Check connectivity on the control cluster:
+
+  kubectl get cluster {{ .Values.cluster.name }} -n <deploygrid namespace>
+
+The Connected condition turns True after the first push.

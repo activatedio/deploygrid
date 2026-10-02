@@ -49,6 +49,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/observations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Collector push. Authenticate with a bearer token issued for one Cluster; a snapshot replaces the listed kinds, otherwise resources are upserted and removed incrementally. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DeploygridObservation"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DeploygridObservationResponse"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MuxError"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/systems": {
         parameters: {
             query?: never;
@@ -399,6 +448,26 @@ export interface components {
             name?: string;
             url?: string;
         };
+        DeploygridObservation: {
+            cluster?: string;
+            errors?: string[];
+            heartbeat?: components["schemas"]["DeploygridObservationHeartbeat"];
+            kinds?: string[];
+            removed?: components["schemas"]["RepositoryResource"][];
+            resources?: components["schemas"]["RepositoryResource"][];
+            snapshot?: boolean;
+        };
+        DeploygridObservationHeartbeat: {
+            collector_version?: string;
+            kubernetes_version?: string;
+            /** Format: date-time */
+            sent_at?: string;
+        };
+        DeploygridObservationResponse: {
+            accepted?: number;
+            cluster?: string;
+            resync?: boolean;
+        };
         DeploygridSystem: {
             description?: string;
             display_name?: string;
@@ -418,6 +487,37 @@ export interface components {
         };
         MuxError: {
             error?: string;
+        };
+        RepositoryClusterLocation: {
+            name?: string;
+            namespace?: string;
+            server?: string;
+        };
+        RepositoryComponent: {
+            image?: string;
+            kind?: string;
+            name?: string;
+            version?: string;
+        };
+        RepositoryResource: {
+            annotations?: {
+                [key: string]: string;
+            };
+            chartVersion?: string;
+            components?: components["schemas"]["RepositoryComponent"][];
+            desiredVersion?: string;
+            destination?: components["schemas"]["RepositoryClusterLocation"];
+            health?: string;
+            hosts?: string[];
+            kind?: string;
+            labels?: {
+                [key: string]: string;
+            };
+            name?: string;
+            namespace?: string;
+            objectName?: string;
+            parent?: string;
+            syncRevision?: string;
         };
     };
     responses: never;

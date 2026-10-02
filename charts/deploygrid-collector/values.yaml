@@ -1,0 +1,63 @@
+image:
+  repository: ghcr.io/activatedio/deploygrid-api
+  pullPolicy: IfNotPresent
+  tag: "v0.0.0"
+
+# Where to push observations: the DeployGrid API base URL.
+server:
+  url: ""
+
+# The Cluster resource name on the control cluster this collector reports for.
+cluster:
+  name: ""
+
+# The bearer token issued for the Cluster. Either set token (a Secret is
+# created) or point existingSecret at a Secret holding it.
+token: ""
+existingSecret:
+  name: ""
+  key: token
+
+# Seconds to coalesce changes before pushing, and heartbeat interval.
+flushSeconds: 2
+heartbeatSeconds: 30
+
+logging:
+  level: info
+
+replicaCount: 1
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+rbac:
+  create: true
+
+podAnnotations: {}
+podLabels: {}
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+resources:
+  requests:
+    cpu: 20m
+    memory: 64Mi
+  limits:
+    memory: 256Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

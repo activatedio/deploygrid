@@ -51,8 +51,10 @@ spec:
   addresses:
     - https://127.0.0.1:6445
   environment: stage
+  # Observed by a collector (make dev_collector); the server generates the
+  # token Secret kind-app-cluster-2-collector-token.
   collection:
-    mode: kubeconfig
+    mode: agent
 ---
 apiVersion: deploygrid.activated.io/v1alpha1
 kind: Component

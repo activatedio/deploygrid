@@ -66,6 +66,28 @@ func deployment(namespace, name, instance, chartVersion, image string, labels ma
 	}
 }
 
+func ingress(namespace, name, instance string, labels map[string]string, hosts ...string) *repository.Resource {
+	l := map[string]string{}
+	parent := ""
+	if instance != "" {
+		l["app.kubernetes.io/managed-by"] = "Helm"
+		l["app.kubernetes.io/instance"] = instance
+		parent = "applications/" + instance
+	}
+	for k, v := range labels {
+		l[k] = v
+	}
+	return &repository.Resource{
+		Name:       "namespaces/" + namespace + "/ingresses/" + name,
+		Kind:       repository.KindIngress,
+		Namespace:  namespace,
+		ObjectName: name,
+		Parent:     parent,
+		Labels:     l,
+		Hosts:      hosts,
+	}
+}
+
 func snapshot(t *testing.T, rs ...*repository.Resource) *store.StoreData {
 	t.Helper()
 	s := store.NewStore()
@@ -130,6 +152,9 @@ func fixture(t *testing.T) grid.Input {
 				deployment("qa-app-a", "app", "qa-app-a", "1.16.1", "1.14.2", nil), // behind desired 1.17.0
 				deployment("dev-app-b", "app", "dev-app-b", "2.0.0", "1.25.0", nil),
 				deployment("qa-batch", "worker", "", "", "3.1.0", map[string]string{"role": "worker"}),
+				ingress("dev-app-a", "app", "dev-app-a", nil, "app-a.dev.example.com"),
+				ingress("qa-batch", "worker", "", map[string]string{grid.LabelComponent: "worker"}, "worker.qa.example.com", "worker-alt.qa.example.com"),
+				ingress("dev-misc", "stray", "", nil, "stray.example.com"),
 				deployment("dev-misc", "orphan", "", "", "0.1.0", nil),
 				deployment("kube-system", "coredns", "", "", "1.11.1", nil),
 				deployment("kube-system", "metrics", "", "", "0.7.0", map[string]string{grid.LabelComponent: "metrics", grid.LabelEnvironment: "dev"}),
@@ -178,7 +203,8 @@ func TestBuild(t *testing.T) {
 	a.Equal(app1Cluster, dev.Cluster)
 	a.Equal("dev-app-a", dev.Namespace)
 	a.Equal(repository.HealthUnknown, dev.Health, "the Application has unknown health, which dominates")
-	require.Len(t, dev.Artifacts, 3, "application plus two deployments")
+	a.Equal([]string{"app-a.dev.example.com"}, dev.Hosts, "hosts come from the Helm-managed ingress")
+	require.Len(t, dev.Artifacts, 4, "application, two deployments and the ingress")
 	a.Equal("nginx", dev.Artifacts[1].Versions[0].Name)
 	a.Equal("1.14.2", dev.Artifacts[1].Versions[0].Value)
 	require.Len(t, dev.Links, 1)
@@ -203,6 +229,7 @@ func TestBuild(t *testing.T) {
 	a.Equal("3.1.0", worker.Cells["qa"].Version)
 	a.Empty(worker.Cells["qa"].DesiredVersion)
 	a.Equal(repository.HealthHealthy, worker.Cells["qa"].Health)
+	a.Equal([]string{"worker-alt.qa.example.com", "worker.qa.example.com"}, worker.Cells["qa"].Hosts, "labelled standalone ingress adds hosts")
 
 	// statuses only for declared components of this system
 	require.Len(t, res.Statuses["app-a"], 3)
@@ -218,7 +245,7 @@ func TestBuild(t *testing.T) {
 
 	// unassigned: the orphan deployment, plus the lost application which has
 	// a component but no resolvable environment; coredns in kube-system is
-	// ignored
+	// ignored and ingresses never appear
 	require.Len(t, res.Unassigned, 2)
 	a.Equal("orphan", res.Unassigned[0].Name)
 	a.Equal("dev", res.Unassigned[0].Environment, "environment still resolved through the namespace rule")

@@ -51,7 +51,7 @@ func (c *resourceRepositoryClusterAwareAccessor) Get(_ context.Context, clusterN
 		var cfg *rest.Config
 		var err error
 
-		if cl.config.Local {
+		if cl.config.EffectiveMode() == config.ClusterModeLocal {
 			cfg, err = rest.InClusterConfig()
 		} else {
 			cfg, err = clientcmd.BuildConfigFromFlags("", cl.config.KubeConfigPath)
@@ -99,6 +99,10 @@ func NewResourceRepositoryClusterAwareAccessor(params ResourceRepositoryClusterA
 
 	for i := range params.ClustersConfig.Clusters {
 		c := &params.ClustersConfig.Clusters[i]
+		if c.EffectiveMode() == config.ClusterModeAgent {
+			// Observations arrive from a collector; nothing to watch here.
+			continue
+		}
 		clusterNames = append(clusterNames, c.Name)
 		clusters[c.Name] = cluster{
 			config: c,

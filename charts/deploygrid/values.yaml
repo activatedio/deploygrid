@@ -20,14 +20,17 @@ ui:
     port: 80
 
 #
-# Can be:
+# Clusters the server watches itself. Clusters fed by a collector need no
+# entry here: create a Cluster resource with collection.mode: agent and
+# install the deploygrid-collector chart in that cluster with the generated
+# token.
+#
 # clusters:
 #   - name: cluster1
 #     kubeconfigSecretName: cluster1-secret
 #     address: https://localhost:8080
 #   - name: local
-#     local: true
- 
+#     mode: local
 clusters: []
 environments: []
 

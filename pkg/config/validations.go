@@ -18,6 +18,24 @@ func (m *Main) DoValidate() error {
 		validation.Field(&m.Swagger),
 		validation.Field(&m.Control),
 		validation.Field(&m.Clusters),
+		validation.Field(&m.Collector),
+	)
+}
+
+func (c CollectorConfig) Validate() error {
+	return validate(&c,
+		validation.Field(&c.Server, is.RequestURL),
+		validation.Field(&c.FlushSeconds, validation.Min(1)),
+		validation.Field(&c.HeartbeatSeconds, validation.Min(1)),
+	)
+}
+
+// ValidateForRun checks the fields the collector command needs at start.
+func (c CollectorConfig) ValidateForRun() error {
+	return validate(&c,
+		validation.Field(&c.Server, validation.Required, is.RequestURL),
+		validation.Field(&c.Cluster, validation.Required),
+		validation.Field(&c.Token, validation.When(c.TokenFile == "", validation.Required.Error("token or tokenFile is required"))),
 	)
 }
 
@@ -52,9 +70,12 @@ func (c ClustersConfig) Validate() error {
 }
 
 func (c ClusterConfig) Validate() error {
+	mode := c.EffectiveMode()
 	return validate(&c,
 		validation.Field(&c.Name, validation.Required),
-		validation.Field(&c.KubeConfigPath, validation.When(!c.Local, validation.Required)),
-		validation.Field(&c.Address, validation.When(!c.Local, validation.Required), is.URL),
+		validation.Field(&c.Mode, validation.In(ClusterModeKubeconfig, ClusterModeLocal, ClusterModeAgent, "")),
+		validation.Field(&c.KubeConfigPath, validation.When(mode == ClusterModeKubeconfig, validation.Required)),
+		validation.Field(&c.Address, validation.When(mode == ClusterModeKubeconfig, validation.Required), is.URL),
+		validation.Field(&c.Token, validation.When(mode != ClusterModeAgent, validation.Empty.Error("only agent clusters take a token"))),
 	)
 }

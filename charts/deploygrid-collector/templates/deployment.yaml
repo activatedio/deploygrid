@@ -1,0 +1,81 @@
+{{- if not .Values.server.url }}
+{{- fail "server.url is required" }}
+{{- end }}
+{{- if not .Values.cluster.name }}
+{{- fail "cluster.name is required" }}
+{{- end }}
+{{- if and (not .Values.token) (not .Values.existingSecret.name) }}
+{{- fail "either token or existingSecret.name is required" }}
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "deploygrid-collector.fullname" . }}
+  labels:
+    {{- include "deploygrid-collector.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "deploygrid-collector.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "deploygrid-collector.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "deploygrid-collector.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: collector
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["collector"]
+          env:
+            - name: DEPLOYGRID_COLLECTOR_SERVER
+              value: {{ .Values.server.url | quote }}
+            - name: DEPLOYGRID_COLLECTOR_CLUSTER
+              value: {{ .Values.cluster.name | quote }}
+            - name: DEPLOYGRID_COLLECTOR_TOKEN_FILE
+              value: /etc/deploygrid/token/{{ .Values.existingSecret.key }}
+            - name: DEPLOYGRID_COLLECTOR_FLUSH_SECONDS
+              value: {{ .Values.flushSeconds | quote }}
+            - name: DEPLOYGRID_COLLECTOR_HEARTBEAT_SECONDS
+              value: {{ .Values.heartbeatSeconds | quote }}
+            - name: DEPLOYGRID_LOGGING_LEVEL
+              value: {{ .Values.logging.level | quote }}
+          volumeMounts:
+            - name: token
+              mountPath: /etc/deploygrid/token
+              readOnly: true
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: token
+          secret:
+            secretName: {{ include "deploygrid-collector.tokenSecretName" . }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

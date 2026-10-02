@@ -28,6 +28,7 @@ function cellTitle(cell: Cell): string {
     if (cell.cluster) lines.push(`Cluster: ${cell.cluster}${cell.namespace ? ` / ${cell.namespace}` : ""}`);
     if (cell.desired_version) lines.push(`Desired: ${cell.desired_version}`);
     if (cell.inconsistent) lines.push(`Inconsistent: more than one version is running`);
+    for (const h of cell.hosts ?? []) lines.push(`Host: ${h}`);
     for (const a of cell.artifacts ?? []) {
         const versions = (a.versions ?? []).map(v => `${v.name}=${v.value}`).join(", ");
         lines.push(`${a.kind} ${a.namespace ? a.namespace + "/" : ""}${a.name}${versions ? `: ${versions}` : ""}`);
@@ -41,7 +42,12 @@ function CellView({cell}: { cell?: Cell }) {
     }
     const label = cell.version || (cell.desired_version ? "?" : "--");
     const sub = cell.drifted && cell.desired_version ? `wants ${cell.desired_version}` : undefined;
-    return <Chip status={cellStatus(cell)} label={label} sub={sub} title={cellTitle(cell)}/>;
+    const host = cell.hosts?.[0];
+    return <div className="flex flex-col gap-1">
+        <Chip status={cellStatus(cell)} label={label} sub={sub} title={cellTitle(cell)}/>
+        {host && <a href={`https://${host}`} target="_blank" rel="noreferrer"
+                    className="text-xs text-sky-600 hover:underline truncate max-w-40" title={host}>{host}</a>}
+    </div>;
 }
 
 function RowHeader({row, indent}: { row: Row; indent: number }) {

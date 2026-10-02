@@ -1,0 +1,34 @@
+{{- if .Values.rbac.create }}
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ include "deploygrid-collector.fullname" . }}
+  labels:
+    {{- include "deploygrid-collector.labels" . | nindent 4 }}
+rules:
+  # Read-only observation of workloads, routing and Argo CD applications.
+  - apiGroups: ['apps']
+    resources: ['deployments']
+    verbs: ['get', 'watch', 'list']
+  - apiGroups: ['networking.k8s.io']
+    resources: ['ingresses']
+    verbs: ['get', 'watch', 'list']
+  - apiGroups: ['argoproj.io']
+    resources: ['applications']
+    verbs: ['get', 'watch', 'list']
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "deploygrid-collector.fullname" . }}
+  labels:
+    {{- include "deploygrid-collector.labels" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "deploygrid-collector.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: {{ include "deploygrid-collector.fullname" . }}
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}

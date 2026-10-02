@@ -15,6 +15,7 @@ type RouterParams struct {
 	SwaggerConfig *config.SwaggerConfig
 	Grid          Grid
 	Systems       Systems
+	Observations  Observations
 	Health        Health
 }
 
@@ -28,6 +29,7 @@ const (
 	PathSystemComponents = PathSystem + "/components"
 	PathSystemComponent  = PathSystemComponents + "/{" + PathParamComponent + "}"
 	PathSystemUnassigned = PathSystem + "/unassigned"
+	PathObservations     = PathBase + "/observations"
 )
 
 func NewRouter(params RouterParams) *mux.Router {
@@ -47,6 +49,7 @@ func NewRouter(params RouterParams) *mux.Router {
 	r.HandleFunc(PathSystemComponents, params.Systems.Components).Methods(http.MethodGet)
 	r.HandleFunc(PathSystemComponent, params.Systems.Component).Methods(http.MethodGet)
 	r.HandleFunc(PathSystemUnassigned, params.Systems.Unassigned).Methods(http.MethodGet)
+	r.HandleFunc(PathObservations, params.Observations.Post).Methods(http.MethodPost)
 
 	_su := params.SwaggerConfig.SwaggerUiUrl
 

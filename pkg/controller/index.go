@@ -10,6 +10,7 @@ func Index() fx.Option {
 		NewHealth,
 		NewGrid,
 		NewSystems,
+		NewObservations,
 		NewRouter,
 	))
 

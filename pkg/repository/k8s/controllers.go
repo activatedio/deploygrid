@@ -7,6 +7,8 @@ import (
 	"github.com/rancher/lasso/pkg/cache"
 	"github.com/rancher/lasso/pkg/client"
 	"github.com/rancher/lasso/pkg/controller"
+	corefactory "github.com/rancher/wrangler/v3/pkg/generated/controllers/core"
+	corecontroller "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
 	"github.com/rancher/wrangler/v3/pkg/generic"
 	"github.com/rancher/wrangler/v3/pkg/ratelimit"
 	"github.com/rancher/wrangler/v3/pkg/start"
@@ -28,6 +30,10 @@ import (
 // informer lazily on first use, and only informers that exist when Start runs
 // are started and synced.
 type Controllers struct {
+	// Secrets is scoped to the control namespace; it backs collector tokens.
+	Secrets      corecontroller.SecretController
+	SecretsCache corecontroller.SecretCache
+
 	Systems                 deploygridcontroller.SystemController
 	SystemsCache            deploygridcontroller.SystemCache
 	Components              deploygridcontroller.ComponentController
@@ -66,6 +72,7 @@ func NewControllers(cfg *config.ControlConfig, lifecycle fx.Lifecycle) (*Control
 		},
 	})
 
+	secrets := appCtx.Core.Secret()
 	systems := appCtx.DG.System()
 	components := appCtx.DG.Component()
 	clusters := appCtx.DG.Cluster()
@@ -73,6 +80,8 @@ func NewControllers(cfg *config.ControlConfig, lifecycle fx.Lifecycle) (*Control
 	views := appCtx.DG.ConfigurationView()
 
 	return &Controllers{
+		Secrets:                 secrets,
+		SecretsCache:            secrets.Cache(),
 		Systems:                 systems,
 		SystemsCache:            systems.Cache(),
 		Components:              components,
@@ -99,7 +108,8 @@ type appContext struct {
 	cancel                  context.CancelFunc
 	SharedControllerFactory controller.SharedControllerFactory
 
-	DG deploygridcontroller.Interface
+	DG   deploygridcontroller.Interface
+	Core corecontroller.Interface
 
 	starters []start.Starter
 }
@@ -149,9 +159,18 @@ func newContext(cl *rest.Config, namespace string) (*appContext, error) {
 		return nil, err
 	}
 
+	core, err := corefactory.NewFactoryFromConfigWithOptions(cl, &corefactory.FactoryOptions{
+		SharedControllerFactory: scf,
+		Namespace:               namespace,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	return &appContext{
 		SharedControllerFactory: scf,
 		DG:                      dg.Deploygrid().V1alpha1(),
-		starters:                []start.Starter{dg},
+		Core:                    core.Core().V1(),
+		starters:                []start.Starter{dg, core},
 	}, nil
 }

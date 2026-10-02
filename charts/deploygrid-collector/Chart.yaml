@@ -1,0 +1,6 @@
+apiVersion: v2
+name: deploygrid-collector
+description: Watches a Kubernetes cluster and pushes what runs there to a DeployGrid server
+type: application
+version: 0.0.0
+appVersion: "0.0.0"

@@ -16,49 +16,38 @@ import (
 	"github.com/activatedio/deploygrid/pkg/store"
 )
 
-type resourcesOrError struct {
-	Resources *repository.Resources
-	Error     error
-}
-
-type clusterStores struct {
-	applications *store.Store
-	deployments  *store.Store
-}
-
 type gridService struct {
-	catalog  Catalog
-	accessor repository.ClusterAwareAccessor[*repository.Resources]
-	clusters map[string]resourcesOrError
-	stores   map[string]clusterStores
-	lock     sync.RWMutex
+	catalog   Catalog
+	accessor  repository.ClusterAwareAccessor[*repository.Resources]
+	registry  *SourceRegistry
+	connected map[string]bool
+	lock      sync.Mutex
 }
 
-// updateClusters connects to any cluster not yet watched (or whose last
-// connection attempt failed) and starts its watches.
+// updateClusters connects to any pull-mode cluster not yet watched (or whose
+// last connection attempt failed) and starts its watches.
 func (g *gridService) updateClusters(ctx context.Context) {
 
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
 	for _, cn := range g.accessor.ClusterNames(ctx) {
-		if roe, ok := g.clusters[cn]; ok && roe.Error == nil {
+		if g.connected[cn] {
 			continue
 		}
 		res, err := g.accessor.Get(ctx, cn)
 		if err != nil {
-			g.clusters[cn] = resourcesOrError{Error: err}
+			g.registry.SetError(cn, err)
 			continue
 		}
-		st := clusterStores{
-			applications: store.NewStore(),
-			deployments:  store.NewStore(),
-		}
 		// Watches live for the process lifetime, not the request.
-		res.Applications.Watch(context.WithoutCancel(ctx), st.applications)
-		res.Deployment.Watch(context.WithoutCancel(ctx), st.deployments)
-		g.stores[cn] = st
-		g.clusters[cn] = resourcesOrError{Resources: res}
+		watchCtx := context.WithoutCancel(ctx)
+		for kind, repo := range res.ByKind() {
+			st, _ := g.registry.Store(cn, kind)
+			repo.Watch(watchCtx, st)
+		}
+		g.registry.ClearError(cn)
+		g.connected[cn] = true
 	}
 }
 
@@ -66,34 +55,11 @@ func (g *gridService) Init() {
 	g.updateClusters(context.Background())
 }
 
-// snapshot merges the application and deployment snapshots of every cluster
-// and collects cluster-level errors.
+// snapshot refreshes pull-mode connections and returns the merged observed
+// state of every cluster.
 func (g *gridService) snapshot(ctx context.Context) (map[string]*store.StoreData, []string) {
 	g.updateClusters(ctx)
-
-	g.lock.RLock()
-	defer g.lock.RUnlock()
-
-	var errs []string
-	for k, v := range g.clusters {
-		if v.Error != nil {
-			errs = append(errs, fmt.Sprintf("[Connect to cluster %s]: %s", k, v.Error.Error()))
-		}
-	}
-
-	data := map[string]*store.StoreData{}
-	for k, v := range g.stores {
-		merged := store.NewStoreData()
-		for _, st := range []*store.Store{v.applications, v.deployments} {
-			d, err := st.GetData()
-			if err != nil {
-				errs = append(errs, fmt.Sprintf("[cluster %s]: %s", k, err.Error()))
-			}
-			merged.AddAll(d)
-		}
-		data[k] = merged
-	}
-	return data, errs
+	return g.registry.Snapshot()
 }
 
 func (g *gridService) build(ctx context.Context, system *v1alpha1.System, observed map[string]*store.StoreData, errs []string) (*grid.Result, error) {
@@ -198,13 +164,14 @@ type GridServiceParams struct {
 	fx.In
 	Catalog  Catalog
 	Accessor repository.ClusterAwareAccessor[*repository.Resources]
+	Registry *SourceRegistry
 }
 
 func NewGridService(params GridServiceParams) GridService {
 	return &gridService{
-		catalog:  params.Catalog,
-		accessor: params.Accessor,
-		clusters: map[string]resourcesOrError{},
-		stores:   map[string]clusterStores{},
+		catalog:   params.Catalog,
+		accessor:  params.Accessor,
+		registry:  params.Registry,
+		connected: map[string]bool{},
 	}
 }

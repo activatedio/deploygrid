@@ -30,7 +30,7 @@ func clusterInfosFromConfig(cfg *config.ClustersConfig) []grid.ClusterInfo {
 	out := make([]grid.ClusterInfo, 0, len(cfg.Clusters))
 	for _, c := range cfg.Clusters {
 		addr := c.Address
-		if c.Local && addr == "" {
+		if c.EffectiveMode() == config.ClusterModeLocal && addr == "" {
 			addr = InClusterAddress
 		}
 		ci := grid.ClusterInfo{Name: c.Name}

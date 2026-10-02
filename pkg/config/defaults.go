@@ -19,5 +19,9 @@ func Defaults() *Main {
 			Namespace: DefaultControlNamespace,
 		},
 		Clusters: ClustersConfig{},
+		Collector: CollectorConfig{
+			FlushSeconds:     2,
+			HeartbeatSeconds: 30,
+		},
 	}
 }

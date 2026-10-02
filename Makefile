@@ -66,6 +66,14 @@ lint: golangci-lint
 serve:
 	DEPLOYGRID_SWAGGER_SWAGGER_UI_URL=http://127.0.0.1:8081 CONFIG_PATH=./testdata/config.yaml DEPLOYGRID_LOGGING_DEV_MODE=true go run ./cmd/main
 
+## Run a collector against kind-app-cluster-2, pushing to the local server
+dev_collector:
+	DEPLOYGRID_COLLECTOR_SERVER=http://127.0.0.1:8080/api \
+	DEPLOYGRID_COLLECTOR_CLUSTER=kind-app-cluster-2 \
+	DEPLOYGRID_COLLECTOR_TOKEN=$$(kubectl --context kind-ops-cluster-1 get secret kind-app-cluster-2-collector-token -n deploygrid -o jsonpath='{.data.token}' | base64 -d) \
+	DEPLOYGRID_COLLECTOR_KUBE_CONFIG_PATH=.kind/kubeconfig-app-cluster-2.yaml \
+	DEPLOYGRID_LOGGING_DEV_MODE=true go run ./cmd/main collector
+
 ## Apply CRDs and sample custom resources to the kind ops cluster
 dev_kind_crs:
 	kubectl --context kind-ops-cluster-1 apply -f ./crds

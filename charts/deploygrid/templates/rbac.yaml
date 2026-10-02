@@ -5,14 +5,40 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: {{ include "deploygrid.fullname" . }}-clusterrole
 rules:
-  # Observation of workloads and delivery resources (read only).
+  # Observation of workloads and delivery resources on the local cluster
+  # (mode local); remote clusters are observed by collectors.
   - apiGroups: ['', 'apps', 'networking.k8s.io', 'argoproj.io']
-    resources: ['namespaces', 'deployments', 'statefulsets', 'daemonsets', 'ingresses', 'applications', 'secrets']
+    resources: ['namespaces', 'deployments', 'statefulsets', 'daemonsets', 'ingresses', 'applications']
     verbs: ['get', 'watch', 'list']
   # deploygrid custom resources, including status updates.
   - apiGroups: ['deploygrid.activated.io']
     resources: ['*']
     verbs: ['get', 'watch', 'list', 'create', 'update', 'patch', 'delete']
+---
+# Collector tokens live in Secrets in the release namespace.
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ include "deploygrid.fullname" . }}-tokens
+  namespace: {{ .Release.Namespace }}
+rules:
+  - apiGroups: ['']
+    resources: ['secrets']
+    verbs: ['get', 'watch', 'list', 'create', 'update', 'patch']
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "deploygrid.fullname" . }}-tokens
+  namespace: {{ .Release.Namespace }}
+subjects:
+- kind: ServiceAccount
+  name: {{ include "deploygrid.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: Role
+  name: {{ include "deploygrid.fullname" . }}-tokens
+  apiGroup: rbac.authorization.k8s.io
 {{- if .Values.serviceAccount.create }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
