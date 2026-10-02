@@ -6,6 +6,10 @@ server {
     index        index.html;
 
     location /api/ {
+        # collectors post full snapshots here; match the API's 64 MiB limit
+        # (nginx defaults to 1m and answers 413 above it)
+        client_max_body_size   64m;
+        proxy_request_buffering off;
         proxy_pass         http://127.0.0.1:${API_PORT}/api/;
         proxy_http_version 1.1;
         proxy_set_header   Host $host;
