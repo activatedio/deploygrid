@@ -155,9 +155,11 @@ jobs:
         run: |
           VERSION=${GITHUB_REF_NAME#v}
           REPOSITORY=ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')
-          sed -i "s/v0\.0\.0/v${VERSION}/g" ./charts/deploygrid/values.yaml
-          helm package ./charts/deploygrid --version $VERSION
-          helm push ./deploygrid-$VERSION.tgz oci://$REPOSITORY
+          for chart in deploygrid deploygrid-collector; do
+            sed -i "s/v0\.0\.0/v${VERSION}/g" ./charts/$chart/values.yaml
+            helm package ./charts/$chart --version $VERSION --app-version v$VERSION
+            helm push ./$chart-$VERSION.tgz oci://$REPOSITORY
+          done
   
   deploy-amd64-ui:
     runs-on: custom-ubuntu-24.04
