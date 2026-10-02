@@ -1,16 +1,87 @@
 package k8s
 
 import (
-	"fmt"
 	"strings"
+	"unicode"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 
 	"github.com/activatedio/deploygrid/pkg/repository"
 )
+
+const (
+	labelManagedBy = "app.kubernetes.io/managed-by"
+	labelInstance  = "app.kubernetes.io/instance"
+	labelHelmChart = "helm.sh/chart"
+)
+
+// argoHealth maps Argo CD health values onto the coarse health used here.
+func argoHealth(status string) string {
+	switch status {
+	case "Healthy":
+		return repository.HealthHealthy
+	case "Progressing":
+		return repository.HealthProgressing
+	case "Degraded", "Missing":
+		return repository.HealthDegraded
+	default:
+		return repository.HealthUnknown
+	}
+}
+
+// deploymentConditions picks out the conditions health depends on; replica
+// failure short-circuits to Degraded.
+func deploymentConditions(dep *appsv1.Deployment) (available, progressing *appsv1.DeploymentCondition, failed bool) {
+	for i := range dep.Status.Conditions {
+		c := &dep.Status.Conditions[i]
+		switch c.Type {
+		case appsv1.DeploymentAvailable:
+			available = c
+		case appsv1.DeploymentProgressing:
+			progressing = c
+		case appsv1.DeploymentReplicaFailure:
+			failed = failed || c.Status == corev1.ConditionTrue
+		}
+	}
+	return available, progressing, failed
+}
+
+// deploymentHealth derives health from Deployment conditions.
+func deploymentHealth(dep *appsv1.Deployment) string {
+	available, progressing, failed := deploymentConditions(dep)
+	switch {
+	case failed:
+		return repository.HealthDegraded
+	case progressing != nil && progressing.Status == corev1.ConditionFalse:
+		return repository.HealthDegraded
+	case available == nil:
+		return repository.HealthUnknown
+	case available.Status != corev1.ConditionTrue:
+		return repository.HealthDegraded
+	case progressing != nil && progressing.Reason != "NewReplicaSetAvailable":
+		return repository.HealthProgressing
+	default:
+		return repository.HealthHealthy
+	}
+}
+
+// ChartVersionFromLabel extracts "1.2.3" from a helm.sh/chart label such as
+// "sealed-secrets-1.2.3". It returns "" when no version suffix is present.
+func ChartVersionFromLabel(label string) string {
+	i := strings.LastIndex(label, "-")
+	if i < 0 || i == len(label)-1 {
+		return ""
+	}
+	v := label[i+1:]
+	if !unicode.IsDigit(rune(v[0])) {
+		return ""
+	}
+	return v
+}
 
 func NewApplicationRepository(client dynamic.Interface) repository.ResourceRepository {
 	return NewResourceRepository(ResourceRepositoryParams{
@@ -30,34 +101,30 @@ func NewApplicationRepository(client dynamic.Interface) repository.ResourceRepos
 				return nil, err
 			}
 
-			compName := app.Spec.Source.Chart
-			if compName == "" {
-				parts := strings.Split(app.Spec.Source.RepoURL, "/")
-				compName = parts[len(parts)-1]
+			var comps []repository.Component
+			if rev := app.Status.Sync.Revision; rev != "" {
+				comps = append(comps, repository.Component{
+					Name:    "revision",
+					Kind:    repository.VersionKindRevision,
+					Version: rev,
+				})
 			}
 
-			// Chart-sourced apps are named by chart; git-sourced apps fall back to
-			// the last path segment of the repository URL.
-			simpleName := compName
-
 			return &repository.Resource{
-				Name:        ApplicationName(app.Name),
-				Labels:      app.Labels,
-				Annotations: app.Annotations,
-				Components: []repository.Component{
-					{
-						Name:        ApplicationName(app.Name),
-						SimpleName:  simpleName,
-						DisplayName: app.Name,
-						Type:        "Application Helm Chart",
-						Version:     app.Spec.Source.TargetRevision,
-						PathElement: fmt.Sprintf("applicationcharts/%s", simpleName),
-						ChildrenLocation: []repository.ClusterLocation{
-							{
-								Server: app.Spec.Destination.Server,
-							},
-						},
-					},
+				Name:           ApplicationName(app.Name),
+				Kind:           repository.KindApplication,
+				Namespace:      app.Namespace,
+				ObjectName:     app.Name,
+				Labels:         app.Labels,
+				Annotations:    app.Annotations,
+				Components:     comps,
+				DesiredVersion: app.Spec.Source.TargetRevision,
+				SyncRevision:   app.Status.Sync.Revision,
+				Health:         argoHealth(app.Status.Health.Status),
+				Destination: &repository.ClusterLocation{
+					Server:    app.Spec.Destination.Server,
+					Name:      app.Spec.Destination.Name,
+					Namespace: app.Spec.Destination.Namespace,
 				},
 			}, nil
 		},
@@ -84,36 +151,32 @@ func NewDeploymentRepository(client dynamic.Interface) repository.ResourceReposi
 
 			parent := ""
 
-			if mb, ok := dep.Labels["app.kubernetes.io/managed-by"]; ok && mb == "Helm" {
-				parent = ApplicationName(dep.Labels["app.kubernetes.io/instance"])
+			if mb, ok := dep.Labels[labelManagedBy]; ok && mb == "Helm" {
+				parent = ApplicationName(dep.Labels[labelInstance])
 			}
 
-			var comps []repository.Component
+			comps := make([]repository.Component, 0, len(dep.Spec.Template.Spec.Containers))
 
 			for _, c := range dep.Spec.Template.Spec.Containers {
-
-				version := ParseImageReference(c.Image).Version()
-
-				pathElement := fmt.Sprintf("deployments/%s/containers/%s", dep.Name, c.Name)
-				name := fmt.Sprintf("namespaces/%s/%s", dep.Namespace, pathElement)
-				simpleName := fmt.Sprintf("%s/%s", dep.Name, c.Name)
-
 				comps = append(comps, repository.Component{
-					Name:        name,
-					SimpleName:  simpleName,
-					DisplayName: simpleName,
-					Type:        "Container",
-					Version:     version,
-					PathElement: pathElement,
+					Name:    c.Name,
+					Kind:    repository.VersionKindContainer,
+					Version: ParseImageReference(c.Image).Version(),
+					Image:   c.Image,
 				})
 			}
 
 			return &repository.Resource{
-				Name:        DeploymentName(dep.Namespace, dep.Name),
-				Labels:      dep.Labels,
-				Annotations: dep.Annotations,
-				Parent:      parent,
-				Components:  comps,
+				Name:         DeploymentName(dep.Namespace, dep.Name),
+				Kind:         repository.KindDeployment,
+				Namespace:    dep.Namespace,
+				ObjectName:   dep.Name,
+				Labels:       dep.Labels,
+				Annotations:  dep.Annotations,
+				Parent:       parent,
+				Components:   comps,
+				ChartVersion: ChartVersionFromLabel(dep.Labels[labelHelmChart]),
+				Health:       deploymentHealth(dep),
 			}, nil
 		},
 	})

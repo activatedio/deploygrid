@@ -15,14 +15,16 @@ import (
 // Index assembles the application from an already-loaded configuration.
 func Index(m *config.Main) fx.Option {
 
-	// The System source depends on whether a control cluster is configured:
-	// with one, Systems are read from custom resources; without one, a single
-	// "default" System is synthesised from the v1 cluster configuration.
-	systems := fx.Provide(service.NewConfigSystemService)
+	// The declared half of the model comes from custom resources when a
+	// control cluster is configured; otherwise a single "default" System is
+	// synthesised from the v1 cluster configuration.
+	catalog := fx.Provide(service.NewConfigCatalog)
 	if m.Control.Enabled {
-		systems = fx.Options(
+		catalog = fx.Options(
 			fx.Provide(k8s.NewControllers),
-			fx.Provide(service.NewControlSystemService),
+			fx.Provide(service.NewControlCatalog),
+			fx.Provide(service.NewStatusWriter),
+			fx.Invoke(func(*service.StatusWriter) {}),
 		)
 	}
 
@@ -39,10 +41,11 @@ func Index(m *config.Main) fx.Option {
 		config.Index(m),
 		controller.Index(),
 		k8s.Index(),
-		systems,
+		catalog,
 		fx.Provide(
 			runner.NewServer,
 			apiinframux.NewOpenapi,
+			service.NewSystemService,
 			service.NewGridService,
 		),
 		fx.Invoke(func(service service.GridService) {

@@ -10,7 +10,7 @@ metadata:
 
   labels:
     app: '{{ template "deploygrid.name" . }}'
-    # Generated Labels {{- include "labels" . | nindent 4 }}
+    # Generated Labels {{- include "deploygrid.labels" . | nindent 4 }}
 
     app.kubernetes.io/instance: '{{ .Release.Name }}'
     app.kubernetes.io/name: '{{ template "deploygrid.name" . }}'
@@ -235,7 +235,7 @@ metadata:
 
   labels:
     app: '{{ template "deploygrid.name" . }}'
-    # Generated Labels {{- include "labels" . | nindent 4 }}
+    # Generated Labels {{- include "deploygrid.labels" . | nindent 4 }}
 
     app.kubernetes.io/instance: '{{ .Release.Name }}'
     app.kubernetes.io/name: '{{ template "deploygrid.name" . }}'
@@ -509,7 +509,7 @@ metadata:
 
   labels:
     app: '{{ template "deploygrid.name" . }}'
-    # Generated Labels {{- include "labels" . | nindent 4 }}
+    # Generated Labels {{- include "deploygrid.labels" . | nindent 4 }}
 
     app.kubernetes.io/instance: '{{ .Release.Name }}'
     app.kubernetes.io/name: '{{ template "deploygrid.name" . }}'
@@ -663,7 +663,7 @@ metadata:
 
   labels:
     app: '{{ template "deploygrid.name" . }}'
-    # Generated Labels {{- include "labels" . | nindent 4 }}
+    # Generated Labels {{- include "deploygrid.labels" . | nindent 4 }}
 
     app.kubernetes.io/instance: '{{ .Release.Name }}'
     app.kubernetes.io/name: '{{ template "deploygrid.name" . }}'
@@ -820,7 +820,7 @@ metadata:
 
   labels:
     app: '{{ template "deploygrid.name" . }}'
-    # Generated Labels {{- include "labels" . | nindent 4 }}
+    # Generated Labels {{- include "deploygrid.labels" . | nindent 4 }}
 
     app.kubernetes.io/instance: '{{ .Release.Name }}'
     app.kubernetes.io/name: '{{ template "deploygrid.name" . }}'

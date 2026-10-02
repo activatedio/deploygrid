@@ -1,6 +1,7 @@
-package service
+package store
 
 import (
+	"slices"
 	"sync"
 
 	"github.com/go-errors/errors"
@@ -25,6 +26,23 @@ func (s *StoreData) init() {
 	s.parentMap = map[string]map[string]bool{}
 }
 
+// Entries returns every resource in the snapshot keyed by store name.
+func (s *StoreData) Entries() map[string]*repository.Resource {
+	return s.entries
+}
+
+// Children returns the store names of resources whose Parent is the given
+// name, sorted for determinism.
+func (s *StoreData) Children(parent string) []string {
+	pm := s.parentMap[parent]
+	res := make([]string, 0, len(pm))
+	for k := range pm {
+		res = append(res, k)
+	}
+	slices.Sort(res)
+	return res
+}
+
 // Requires locking externally
 func (s *StoreData) copy() *StoreData {
 
@@ -38,7 +56,8 @@ func (s *StoreData) copy() *StoreData {
 	return res
 }
 
-func (s *StoreData) addAll(in *StoreData) {
+// AddAll merges another snapshot into this one.
+func (s *StoreData) AddAll(in *StoreData) {
 	for k, v := range in.entries {
 		s.entries[k] = v
 	}
@@ -189,9 +208,4 @@ func (s *Store) Error(err error) {
 
 func (s *Store) errorNoLock(err error) {
 	s.err = err
-}
-
-type stores struct {
-	applications *Store
-	deployments  *Store
 }

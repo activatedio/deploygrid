@@ -13,10 +13,18 @@ import (
 	"github.com/activatedio/deploygrid/pkg/service"
 )
 
-const PathParamSystem = "system"
+const (
+	PathParamSystem    = "system"
+	PathParamComponent = "component"
+)
 
 type systemPathParams struct {
 	System string `path:"system"`
+}
+
+type componentPathParams struct {
+	System    string `path:"system"`
+	Component string `path:"component"`
 }
 
 type systems struct {
@@ -24,38 +32,39 @@ type systems struct {
 	gridService   service.GridService
 }
 
+func addOperation(r *openapi3.Reflector, method, path, description string, req, resp any) error {
+	oc, err := r.NewOperationContext(method, path)
+	if err != nil {
+		return err
+	}
+	oc.SetDescription(description)
+	if req != nil {
+		oc.AddReqStructure(req)
+	}
+	oc.AddRespStructure(resp, apiinframux.ContentOptionsJSONSuccess...)
+	oc.AddRespStructure(&apiinframux.Error{}, apiinframux.ContentOptionsJSONDefault...)
+	return r.AddOperation(oc)
+}
+
 func (s *systems) OpenapiBuilder() apiinframux.OpenapiBuilder {
 	return func(r *openapi3.Reflector) error {
-
-		list, err := r.NewOperationContext(http.MethodGet, "/systems")
-		if err != nil {
-			return err
+		ops := []struct {
+			path, desc string
+			req, resp  any
+		}{
+			{"/systems", "List systems.", nil, &deploygrid.SystemList{}},
+			{"/systems/{system}", "Get one system with its environments and groups.", systemPathParams{}, &deploygrid.System{}},
+			{"/systems/{system}/grid", "The grid: ordered groups of component rows with one cell per environment.", systemPathParams{}, &deploygrid.Grid{}},
+			{"/systems/{system}/components", "All component rows of the system, flattened.", systemPathParams{}, &deploygrid.GridRowList{}},
+			{"/systems/{system}/components/{component}", "One component row with its cells.", componentPathParams{}, &deploygrid.GridRow{}},
+			{"/systems/{system}/unassigned", "Observed resources that matched no component.", systemPathParams{}, &deploygrid.ArtifactList{}},
 		}
-		list.AddRespStructure(&deploygrid.SystemList{}, apiinframux.ContentOptionsJSONSuccess...)
-		list.AddRespStructure(&apiinframux.Error{}, apiinframux.ContentOptionsJSONDefault...)
-		if err = r.AddOperation(list); err != nil {
-			return err
+		for _, op := range ops {
+			if err := addOperation(r, http.MethodGet, op.path, op.desc, op.req, op.resp); err != nil {
+				return err
+			}
 		}
-
-		get, err := r.NewOperationContext(http.MethodGet, "/systems/{system}")
-		if err != nil {
-			return err
-		}
-		get.AddReqStructure(systemPathParams{})
-		get.AddRespStructure(&deploygrid.System{}, apiinframux.ContentOptionsJSONSuccess...)
-		get.AddRespStructure(&apiinframux.Error{}, apiinframux.ContentOptionsJSONDefault...)
-		if err = r.AddOperation(get); err != nil {
-			return err
-		}
-
-		grid, err := r.NewOperationContext(http.MethodGet, "/systems/{system}/grid")
-		if err != nil {
-			return err
-		}
-		grid.AddReqStructure(systemPathParams{})
-		grid.AddRespStructure(&deploygrid.Grid{}, apiinframux.ContentOptionsJSONSuccess...)
-		grid.AddRespStructure(&apiinframux.Error{}, apiinframux.ContentOptionsJSONDefault...)
-		return r.AddOperation(grid)
+		return nil
 	}
 }
 
@@ -82,22 +91,47 @@ func (s *systems) Get(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, sys)
 }
 
-// Grid returns the grid for a System. Until the v2 grid builder lands, the
-// grid is the v1 cluster-wide grid with the System's environments as
-// columns.
 func (s *systems) Grid(w http.ResponseWriter, r *http.Request) {
-	sys, err := s.systemService.Get(r.Context(), mux.Vars(r)[PathParamSystem])
+	g, err := s.gridService.Grid(r.Context(), mux.Vars(r)[PathParamSystem])
 	if err != nil {
 		apiinframux.HandleError(w, r, err)
 		return
 	}
-	g, err := s.gridService.Get(r.Context())
-	if err != nil {
-		apiinframux.HandleError(w, r, err)
-		return
-	}
-	g.Environments = sys.Environments
 	writeJSON(w, g)
+}
+
+func (s *systems) Components(w http.ResponseWriter, r *http.Request) {
+	rows, err := s.gridService.Rows(r.Context(), mux.Vars(r)[PathParamSystem])
+	if err != nil {
+		apiinframux.HandleError(w, r, err)
+		return
+	}
+	if rows == nil {
+		rows = []*deploygrid.GridRow{}
+	}
+	writeJSON(w, &deploygrid.GridRowList{Items: rows})
+}
+
+func (s *systems) Component(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	row, err := s.gridService.Row(r.Context(), vars[PathParamSystem], vars[PathParamComponent])
+	if err != nil {
+		apiinframux.HandleError(w, r, err)
+		return
+	}
+	writeJSON(w, row)
+}
+
+func (s *systems) Unassigned(w http.ResponseWriter, r *http.Request) {
+	items, err := s.gridService.Unassigned(r.Context(), mux.Vars(r)[PathParamSystem])
+	if err != nil {
+		apiinframux.HandleError(w, r, err)
+		return
+	}
+	if items == nil {
+		items = []*deploygrid.Artifact{}
+	}
+	writeJSON(w, &deploygrid.ArtifactList{Items: items})
 }
 
 func NewSystems(systemService service.SystemService, gridService service.GridService) Systems {

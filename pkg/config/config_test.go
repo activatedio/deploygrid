@@ -37,6 +37,9 @@ clusters:
 
 	t.Setenv("DEPLOYGRID_SERVER_PORT", "9090")
 	t.Setenv("DEPLOYGRID_CONTROL_NAMESPACE", "other")
+	// isolate from whatever the shell running the tests exports
+	t.Setenv("DEPLOYGRID_LOGGING_LEVEL", "")
+	t.Setenv("DEPLOYGRID_SERVER_HOST", "")
 
 	m := config.NewMainConfig(apiinfraconfig.NewConfig(p))
 
@@ -57,6 +60,8 @@ clusters:
 }
 
 func TestNewMainConfig_NoFile(t *testing.T) {
+	t.Setenv("DEPLOYGRID_SERVER_PORT", "")
+	t.Setenv("DEPLOYGRID_CONTROL_ENABLED", "")
 	m := config.NewMainConfig(apiinfraconfig.NewConfig(""))
 	assert.Equal(t, 8080, m.Server.Port)
 	assert.False(t, m.Control.Enabled)

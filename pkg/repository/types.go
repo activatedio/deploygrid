@@ -4,32 +4,73 @@ import (
 	"context"
 )
 
+// Resource kinds observed from clusters.
+const (
+	KindApplication = "argocd-application"
+	KindDeployment  = "deployment"
+)
+
+// Component (version) kinds.
+const (
+	VersionKindContainer = "container"
+	VersionKindChart     = "chart"
+	VersionKindRevision  = "revision"
+)
+
+// Health values, coarse enough to roll up across kinds.
+const (
+	HealthHealthy     = "Healthy"
+	HealthProgressing = "Progressing"
+	HealthDegraded    = "Degraded"
+	HealthUnknown     = "Unknown"
+)
+
+// Component is one versioned part of a Resource: a container image, a chart
+// or a delivery revision.
 type Component struct {
-	// Name Primary name which uniquely identifies the component and can be used for parent relationshipos
-	Name string
-	// SimpleName which is common for other items in the same ro
-	SimpleName string
-	// DisplayName is the full name to display when showing the component in a cell
-	DisplayName string
-	// Type of component
-	Type string
-	// Version fo the commonent
+	// Name is unique within the resource (container name, "chart", "revision").
+	Name    string
+	Kind    string
 	Version string
-	// PathElement is the location in the tree for the component
-	PathElement      string
-	ChildrenLocation []ClusterLocation
+	// Image is the full image reference for containers.
+	Image string
 }
 
+// ClusterLocation is where a delivery resource (Argo CD Application) places
+// its workloads.
 type ClusterLocation struct {
-	Server string
+	Server    string
+	Name      string
+	Namespace string
 }
 
+// Resource is an observed artifact: a workload or a delivery resource,
+// normalised so the grid builder does not need to know about Kubernetes
+// kinds.
 type Resource struct {
-	Name        string
+	// Name is the store key, unique within a cluster:
+	// applications/<name> or namespaces/<ns>/deployments/<name>.
+	Name       string
+	Kind       string
+	Namespace  string
+	ObjectName string
+	// Parent is the store key of the delivery resource that manages this one,
+	// if known (for Helm-managed workloads: applications/<release>).
 	Parent      string
 	Labels      map[string]string
 	Annotations map[string]string
-	Components  []Component
+	// Components are the running (actual) versions.
+	Components []Component
+	// DesiredVersion is what the delivery source asks for (Argo CD
+	// targetRevision).
+	DesiredVersion string
+	// SyncRevision is the revision the delivery source last applied.
+	SyncRevision string
+	// ChartVersion is the Helm chart version stamped on a workload.
+	ChartVersion string
+	Health       string
+	Destination  *ClusterLocation
+	Hosts        []string
 }
 
 type ResourceStore interface {

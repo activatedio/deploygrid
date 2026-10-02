@@ -1,103 +1,124 @@
 import useGrid from "../hooks/useGrid.ts";
 import {components} from "../api/schema";
-import {Fragment, ReactNode, useCallback} from "react";
+import {Fragment, ReactNode} from "react";
 import Chip from "./Chip.tsx";
 
+type Cell = components["schemas"]["DeploygridCell"];
+type Row = components["schemas"]["DeploygridGridRow"];
+type Environment = components["schemas"]["DeploygridEnvironment"];
 
-function Table() {
-    const {data} = useGrid();
-    const {environments, components} = data;
+interface TableProps {
+    system: string;
+}
 
-    const thClass = `px-6 py-3 text-start text-xs font-medium text-slate-600`;
-    const tdClass = `px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800`;
+const thClass = `px-6 py-3 text-start text-xs font-medium text-slate-600`;
+const tdClass = `px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-800 align-top`;
 
-    const rowHeader = (name: string, type: string): ReactNode => {
-        return <div className="flex flex-col gap-1">
-            <span>{name}</span>
-            <span className="text-gray-400">
-                {type}
-            </span>
-        </div>
+function cellStatus(cell: Cell): "success" | "warning" | "error" | "default" | "info" {
+    if (cell.health === "Degraded") return "error";
+    if (cell.drifted || cell.inconsistent) return "warning";
+    if (cell.health === "Progressing") return "info";
+    if (cell.health === "Healthy") return "success";
+    return "default";
+}
+
+function cellTitle(cell: Cell): string {
+    const lines: string[] = [];
+    lines.push(`Health: ${cell.health ?? "Unknown"}`);
+    if (cell.cluster) lines.push(`Cluster: ${cell.cluster}${cell.namespace ? ` / ${cell.namespace}` : ""}`);
+    if (cell.desired_version) lines.push(`Desired: ${cell.desired_version}`);
+    if (cell.inconsistent) lines.push(`Inconsistent: more than one version is running`);
+    for (const a of cell.artifacts ?? []) {
+        const versions = (a.versions ?? []).map(v => `${v.name}=${v.value}`).join(", ");
+        lines.push(`${a.kind} ${a.namespace ? a.namespace + "/" : ""}${a.name}${versions ? `: ${versions}` : ""}`);
     }
+    return lines.join("\n");
+}
 
-    const hasDeployments = (r: components["schemas"]["DeploygridComponent"]): boolean => {
-        return Boolean(r.deployments)
+function CellView({cell}: { cell?: Cell }) {
+    if (!cell) {
+        return <span className="text-slate-300">--</span>;
     }
+    const label = cell.version || (cell.desired_version ? "?" : "--");
+    const sub = cell.drifted && cell.desired_version ? `wants ${cell.desired_version}` : undefined;
+    return <Chip status={cellStatus(cell)} label={label} sub={sub} title={cellTitle(cell)}/>;
+}
 
-    const indentRenderer = useCallback((child: ReactNode, indent: number, important?: boolean) => {
-        return <td className={tdClass}
-                   style={{textIndent: `${indent}em`, fontWeight: important ? "bold" : "normal"}}>{child}</td>
-    }, [tdClass]);
+function RowHeader({row, indent}: { row: Row; indent: number }) {
+    const c = row.component ?? {name: "?"};
+    const firstCell = Object.values(row.cells ?? {})[0];
+    return <div className="flex flex-col gap-1" style={{paddingLeft: `${indent}em`}}>
+        <span>
+            {c.display_name ?? c.name}
+            {c.discovered && <span className="ml-2 text-xs font-normal text-slate-400" title="No Component resource declares this row">discovered</span>}
+        </span>
+        <span className="text-xs text-gray-400">
+            {c.kind}
+            {firstCell?.links?.map(l => (
+                <a key={l.name} href={l.url} target="_blank" rel="noreferrer" className="ml-2 text-sky-600 hover:underline">{l.name}</a>
+            ))}
+        </span>
+    </div>
+}
 
-    const getDeploymentVersionForEnv = (r: components["schemas"]["DeploygridComponent"], env: string | undefined): string => {
-        const noVersion = '--';
-        if (!env) {
-            return noVersion;
+function renderRows(rows: Row[], environments: Environment[], indent: number): ReactNode[] {
+    const out: ReactNode[] = [];
+    for (const row of rows) {
+        const name = row.component?.name ?? "";
+        out.push(<tr key={name}>
+            <td className={tdClass}><RowHeader row={row} indent={indent}/></td>
+            {environments.map(env => (
+                <td className={tdClass} key={env.name}>
+                    <CellView cell={env.name ? row.cells?.[env.name] : undefined}/>
+                </td>
+            ))}
+        </tr>);
+        if (row.children?.length) {
+            out.push(...renderRows(row.children, environments, indent + 1));
         }
-        if (r.deployments) {
-            if (env in r.deployments) {
-                return r.deployments[env].version ?? noVersion;
-            }
-        }
-        return noVersion;
     }
+    return out;
+}
 
-    //todo get mapping of deployment key to td index in table
-    const rowRenderer = useCallback((r: components["schemas"]["DeploygridComponent"], indent: number): ReactNode => {
-        if (r.component_type === "Group") {
-            return <tr key={r.name}>
-                {indentRenderer(<span>{r.name}</span>, indent, true)}
-            </tr>
-        } else {
-            if (hasDeployments(r)) {
-                return <tr key={r.name}>
-                    {indentRenderer(rowHeader(r.name ?? '', r.component_type ?? ''), indent)}
-                    {environments?.map((env) => (
-                        <td className={tdClass} key={env?.name ?? ''}>
-                            <Chip status="success" label={getDeploymentVersionForEnv(r, env.name)}/>
-                        </td>
-                    ))}
+function Table({system}: TableProps) {
+    const {data} = useGrid(system);
+    const environments = data.environments ?? [];
+    const groups = data.groups ?? [];
+    const notices = [...(data.errors ?? []), ...(data.warnings ?? [])];
+
+    return <div className="flex flex-col gap-4">
+        {notices.length > 0 && (
+            <ul className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-900">
+                {notices.map((n, i) => <li key={i}>{n}</li>)}
+            </ul>
+        )}
+        <div className="inline-block border rounded-lg overflow-hidden border-slate-300">
+            <table className="divide-y divide-slate-200 text-left font-light">
+                <thead className="bg-slate-50">
+                <tr>
+                    <th className={`${thClass} border-r-2 border-slate-100`}>Component</th>
+                    {environments.map(e => <th key={e.name} className={thClass}>{e.display_name ?? e.name}</th>)}
                 </tr>
-            }
-        }
-        return <td></td>
-    }, [indentRenderer, tdClass]);
-
-    const transformTree = useCallback((node: components["schemas"]["DeploygridComponent"], indent: number): ReactNode[] => {
-
-        if (node == null) return [];
-        const rows: ReactNode[] = [];
-
-        const row = rowRenderer(node, indent);
-        rows.push(row);
-        node.children?.forEach(child => {
-            rows.push(transformTree(child, indent + 1));
-        })
-
-        return rows;
-
-    }, [rowRenderer])
-
-    const populatedTree = useCallback(() => {
-        return components?.map((component) => (
-            <Fragment key={component.name}>
-                {transformTree(component, 0) ?? <tr></tr>}
-            </Fragment>
-        ))
-    }, [components, transformTree])
-
-    return <div className="inline-block border rounded-lg overflow-hidden border-slate-300 overflow-x-visible">
-        <table className="divide-y divide-slate-200 text-left font-light">
-            <thead className="bg-slate-50">
-            <tr>
-                <th className={`${thClass} border-r-2 border-slate-100`}>Component</th>
-                {environments?.map(((e) => <th key={e.name} className={`capitalize ${thClass}`}>{e.name}</th>))}
-            </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-            {populatedTree()}
-            </tbody>
-        </table>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                {groups.length === 0 && (
+                    <tr>
+                        <td className={tdClass} colSpan={environments.length + 1}>
+                            <span className="text-slate-400">Nothing observed yet for this system.</span>
+                        </td>
+                    </tr>
+                )}
+                {groups.map(group => (
+                    <Fragment key={group.name}>
+                        <tr className="bg-slate-50">
+                            <td className={`${tdClass} font-bold`} colSpan={environments.length + 1}>{group.display_name ?? group.name}</td>
+                        </tr>
+                        {renderRows(group.rows ?? [], environments, 0)}
+                    </Fragment>
+                ))}
+                </tbody>
+            </table>
+        </div>
     </div>
 }
 

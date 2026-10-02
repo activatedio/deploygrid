@@ -1,4 +1,4 @@
-package service_test
+package store_test
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	"github.com/activatedio/deploygrid/pkg/apiinfra/zerolog"
 	"github.com/activatedio/deploygrid/pkg/config"
 	"github.com/activatedio/deploygrid/pkg/repository"
-	"github.com/activatedio/deploygrid/pkg/service"
+	"github.com/activatedio/deploygrid/pkg/store"
 )
 
 func init() {
@@ -52,7 +52,7 @@ func TestStore_Concurrency_AddModifyDelete(t *testing.T) {
 	c := &cycleCounter{}
 
 	// We make the writer so that each go routine has unique data
-	makeWriter := func() func(s *service.Store) {
+	makeWriter := func() func(s *store.Store) {
 
 		parents := []*repository.Resource{
 			{
@@ -88,7 +88,7 @@ func TestStore_Concurrency_AddModifyDelete(t *testing.T) {
 			},
 		}
 
-		return func(s *service.Store) {
+		return func(s *store.Store) {
 
 			for _, p := range parents {
 				util.Check(s.Add(p))
@@ -113,7 +113,7 @@ func TestStore_Concurrency_AddModifyDelete(t *testing.T) {
 		}
 	}
 
-	reader := func(s *service.Store) {
+	reader := func(s *store.Store) {
 
 		d, err := s.GetData()
 		util.Check(err)
@@ -126,7 +126,7 @@ func TestStore_Concurrency_AddModifyDelete(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	unit := service.NewStore()
+	unit := store.NewStore()
 
 	wg := sync.WaitGroup{}
 

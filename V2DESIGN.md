@@ -370,15 +370,28 @@ defaults, env overrides and tests; control-cluster informers;
 goroutine exit, image tag parsing, TLS hack opt-in, CI paths, chart rendering);
 kind fixtures with sample CRs.
 
-**Phase 1 — v2 grid from CRs + existing pull.**
-Observation and Artifact types; adapt `NewApplicationRepository` /
-`NewDeploymentRepository` to emit Artifacts; resolution rules; grid index
-keyed by System; `Component.status` writer; `/components`, `/unassigned`;
-legacy annotation warnings; UI reads `/systems/{s}/grid` and renders
-drift/health. v1 `clusters:` config maps onto `Cluster` CRs with
-`mode: kubeconfig` at startup so nothing breaks.
+**Phase 1 — v2 grid from CRs + existing pull (done, 2026-10-01).**
+`repository.Resource` is the normalised artifact (kind, namespace, parent,
+versions, desired version, chart version, health, destination); the
+Application and Deployment collectors fill it. `pkg/grid` is the pure
+builder: resolution rules (§3.3), cells with desired/actual, drift,
+inconsistency, health rollup, rendered links, parent nesting, group order,
+discovered rows, unassigned list and legacy-annotation warnings, all covered
+by fixture tests. `pkg/service` supplies a `Catalog` (custom resources, or a
+"default" System synthesised from v1 config), the grid service, and a status
+writer that persists cells into `Component.status` and counts into
+`System.status` every 15 s when they change. Endpoints: `/systems/{s}/grid`,
+`/components`, `/components/{c}`, `/unassigned`. The UI has a system picker
+and renders groups, nested rows, drift ("wants x.y.z"), health colours,
+links and artifact detail on hover. Configured `clusters:` are merged with
+`Cluster` CRs by name, so the kubeconfig still comes from config while
+environment mapping comes from the CR.
 
-**Phase 2 — collector mode.**
+Not yet in phase 1: ingress hosts, Helm release Secrets, the per-request
+rebuild (the grid is still computed on each GET; fine at current scale, the
+index in §4.2 is the fix when it is not), and `/history`.
+
+**Phase 2 — collector mode (next).**
 `deploygrid collector` command, `HTTPSink`, `POST /observations`, token auth
 from `Cluster.spec.collection.tokenSecretRef`, heartbeat → `Cluster.status`,
 collector sub-chart, distroless image. Ingress and Helm release sources.

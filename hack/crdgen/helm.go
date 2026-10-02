@@ -38,7 +38,7 @@ var (
 
 		if node.Kind == yaml.ScalarNode && !tctx.commentWritten {
 			tctx.commentWritten = true
-			node.FootComment = `# Generated Labels {{- include "labels" . | nindent 4 }}`
+			node.FootComment = `# Generated Labels {{- include "` + chartName + `.labels" . | nindent 4 }}`
 		}
 
 		return tctx, nil, nil

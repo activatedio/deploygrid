@@ -79,8 +79,8 @@ func TestResourceRepository_Watch(t *testing.T) {
 						Name: fmt.Sprintf("namespaces/%s", ns.Name),
 						Components: []repository.Component{
 							{
-								DisplayName: ns.Name,
-								Version:     "0",
+								Name:    ns.Name,
+								Version: "0",
 							},
 						},
 					}, nil
@@ -126,8 +126,8 @@ func TestResourceRepository_Watch(t *testing.T) {
 					assert.Equal(c, repository.ResourceStoreEventAdd, rec[1].EventType)
 					assert.Equal(c, []repository.Component{
 						{
-							DisplayName: nsName,
-							Version:     "0",
+							Name:    nsName,
+							Version: "0",
 						},
 					}, rec[1].Resource.Components)
 
@@ -151,8 +151,8 @@ func TestResourceRepository_Watch(t *testing.T) {
 					assert.Equal(c, repository.ResourceStoreEventDelete, rec[4].EventType)
 					assert.Equal(c, []repository.Component{
 						{
-							DisplayName: nsName,
-							Version:     "0",
+							Name:    nsName,
+							Version: "0",
 						},
 					}, rec[4].Resource.Components)
 

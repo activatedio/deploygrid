@@ -11,6 +11,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** @description Grid of the first System; kept for v1 compatibility. */
         get: {
             parameters: {
                 query?: never;
@@ -48,27 +49,372 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/systems": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List systems. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DeploygridSystemList"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MuxError"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/systems/{system}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get one system with its environments and groups. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    system: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DeploygridSystem"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MuxError"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/systems/{system}/components": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description All component rows of the system, flattened. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    system: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DeploygridGridRowList"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MuxError"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/systems/{system}/components/{component}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description One component row with its cells. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    system: string;
+                    component: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DeploygridGridRow"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MuxError"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/systems/{system}/grid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The grid: ordered groups of component rows with one cell per environment. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    system: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DeploygridGrid"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MuxError"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/systems/{system}/unassigned": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Observed resources that matched no component. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    system: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DeploygridArtifactList"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MuxError"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        DeploygridComponent: {
-            children?: components["schemas"]["DeploygridComponent"][] | null;
-            component_type?: string;
-            deployments?: {
-                [key: string]: components["schemas"]["DeploygridDeployment"];
-            } | null;
+        DeploygridArtifact: {
+            cluster?: string;
+            environment?: string;
+            health?: string;
+            kind?: string;
             name?: string;
+            namespace?: string;
+            versions?: components["schemas"]["DeploygridVersion"][];
         };
-        DeploygridDeployment: {
+        DeploygridArtifactList: {
+            items?: components["schemas"]["DeploygridArtifact"][] | null;
+        };
+        DeploygridCell: {
+            artifacts?: components["schemas"]["DeploygridArtifact"][];
+            cluster?: string;
+            desired_version?: string;
+            drifted?: boolean;
+            health?: string;
+            hosts?: string[];
+            inconsistent?: boolean;
+            links?: components["schemas"]["DeploygridLink"][];
+            namespace?: string;
             version?: string;
         };
+        DeploygridComponentRef: {
+            description?: string;
+            discovered?: boolean;
+            display_name?: string;
+            kind?: string;
+            name?: string;
+        };
         DeploygridEnvironment: {
+            display_name?: string;
             name?: string;
         };
         DeploygridGrid: {
-            components?: components["schemas"]["DeploygridComponent"][] | null;
             environments?: components["schemas"]["DeploygridEnvironment"][] | null;
+            errors?: string[];
+            groups?: components["schemas"]["DeploygridGridGroup"][] | null;
+            system?: components["schemas"]["DeploygridSystem"];
+            warnings?: string[];
+        };
+        DeploygridGridGroup: {
+            display_name?: string;
+            name?: string;
+            rows?: components["schemas"]["DeploygridGridRow"][] | null;
+        };
+        DeploygridGridRow: {
+            cells?: {
+                [key: string]: components["schemas"]["DeploygridCell"];
+            } | null;
+            children?: components["schemas"]["DeploygridGridRow"][];
+            component?: components["schemas"]["DeploygridComponentRef"];
+        };
+        DeploygridGridRowList: {
+            items?: components["schemas"]["DeploygridGridRow"][] | null;
+        };
+        DeploygridGroup: {
+            display_name?: string;
+            name?: string;
+        };
+        DeploygridLink: {
+            name?: string;
+            url?: string;
+        };
+        DeploygridSystem: {
+            description?: string;
+            display_name?: string;
+            environments?: components["schemas"]["DeploygridEnvironment"][] | null;
+            groups?: components["schemas"]["DeploygridGroup"][];
+            name?: string;
+        };
+        DeploygridSystemList: {
+            items?: components["schemas"]["DeploygridSystem"][] | null;
+        };
+        DeploygridVersion: {
+            desired?: string;
+            image?: string;
+            kind?: string;
+            name?: string;
+            value?: string;
         };
         MuxError: {
             error?: string;

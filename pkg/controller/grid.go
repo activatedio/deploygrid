@@ -1,19 +1,19 @@
 package controller
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/swaggest/openapi-go/openapi3"
-	"k8s.io/apimachinery/pkg/util/json"
 
 	apiinframux "github.com/activatedio/deploygrid/pkg/apiinfra/mux"
-	"github.com/activatedio/deploygrid/pkg/apiinfra/util"
 	"github.com/activatedio/deploygrid/pkg/deploygrid"
 	"github.com/activatedio/deploygrid/pkg/service"
 )
 
 type grid struct {
-	GridService service.GridService
+	systemService service.SystemService
+	gridService   service.GridService
 }
 
 func (d *grid) OpenapiBuilder() apiinframux.OpenapiBuilder {
@@ -24,6 +24,7 @@ func (d *grid) OpenapiBuilder() apiinframux.OpenapiBuilder {
 		if err != nil {
 			return err
 		}
+		oc.SetDescription("Grid of the first System; kept for v1 compatibility.")
 		oc.AddRespStructure(&deploygrid.Grid{}, apiinframux.ContentOptionsJSONSuccess...)
 		oc.AddRespStructure(&apiinframux.Error{}, apiinframux.ContentOptionsJSONDefault...)
 
@@ -32,20 +33,26 @@ func (d *grid) OpenapiBuilder() apiinframux.OpenapiBuilder {
 }
 
 func (d *grid) Get(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	g, err := d.GridService.Get(r.Context())
-
+	systems, err := d.systemService.List(r.Context())
 	if err != nil {
 		apiinframux.HandleError(w, r, err)
 		return
 	}
-
-	util.Check(json.NewEncoder(w).Encode(g))
+	if len(systems) == 0 {
+		apiinframux.HandleError(w, r, fmt.Errorf("no systems defined: %w", apiinframux.ErrNotFound))
+		return
+	}
+	g, err := d.gridService.Grid(r.Context(), systems[0].Name)
+	if err != nil {
+		apiinframux.HandleError(w, r, err)
+		return
+	}
+	writeJSON(w, g)
 }
 
-func NewGrid(gridService service.GridService) Grid {
+func NewGrid(systemService service.SystemService, gridService service.GridService) Grid {
 	return &grid{
-		GridService: gridService,
+		systemService: systemService,
+		gridService:   gridService,
 	}
 }
