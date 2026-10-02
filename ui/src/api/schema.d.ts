@@ -700,6 +700,7 @@ export interface components {
         DeploygridCell: {
             artifacts?: components["schemas"]["DeploygridArtifact"][];
             cluster?: string;
+            clusters?: string[];
             desired_version?: string;
             drifted?: boolean;
             health?: string;

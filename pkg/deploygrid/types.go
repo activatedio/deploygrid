@@ -66,16 +66,19 @@ type Link struct {
 
 // Cell is the state of one component in one environment.
 type Cell struct {
-	Version        string      `json:"version"`
-	DesiredVersion string      `json:"desired_version,omitempty"`
-	Drifted        bool        `json:"drifted"`
-	Inconsistent   bool        `json:"inconsistent"`
-	Health         string      `json:"health"`
-	Cluster        string      `json:"cluster,omitempty"`
-	Namespace      string      `json:"namespace,omitempty"`
-	Hosts          []string    `json:"hosts,omitempty"`
-	Links          []*Link     `json:"links,omitempty"`
-	Artifacts      []*Artifact `json:"artifacts,omitempty"`
+	Version        string `json:"version"`
+	DesiredVersion string `json:"desired_version,omitempty"`
+	Drifted        bool   `json:"drifted"`
+	Inconsistent   bool   `json:"inconsistent"`
+	Health         string `json:"health"`
+	// Cluster is where the cell was observed first; Clusters lists every
+	// cluster that contributed when an environment spans several.
+	Cluster   string      `json:"cluster,omitempty"`
+	Clusters  []string    `json:"clusters,omitempty"`
+	Namespace string      `json:"namespace,omitempty"`
+	Hosts     []string    `json:"hosts,omitempty"`
+	Links     []*Link     `json:"links,omitempty"`
+	Artifacts []*Artifact `json:"artifacts,omitempty"`
 }
 
 // GridRow is one component with its cells, keyed by environment name.

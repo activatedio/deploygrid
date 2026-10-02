@@ -69,17 +69,8 @@ spec:
   links:
     - name: Argo CD
       urlTemplate: "https://argocd.example.com/applications/{{ .Environment }}-app-a"
----
-apiVersion: deploygrid.activated.io/v1alpha1
-kind: Component
-metadata:
-  name: app-b
-  namespace: deploygrid
-spec:
-  system: apps
-  displayName: App B
-  group: apps
-  kind: helm-chart
+# app-b is deliberately not declared: discovery materialises it from the
+# Argo CD Application annotations as a Component with status.discovered.
 ---
 apiVersion: deploygrid.activated.io/v1alpha1
 kind: Configuration

@@ -51,6 +51,15 @@ type Input struct {
 	Now    time.Time
 }
 
+// DiscoveredComponent describes a row that no Component resource declares,
+// with what was learned about it from observed resources.
+type DiscoveredComponent struct {
+	Name        string
+	DisplayName string
+	Group       string
+	Kind        v1alpha1.ComponentKind
+}
+
 // Result is the built grid plus derived data for other consumers.
 type Result struct {
 	Grid *deploygrid.Grid
@@ -59,6 +68,9 @@ type Result struct {
 	// Statuses holds the per-environment cell summary for each declared
 	// component, keyed by component name.
 	Statuses map[string][]v1alpha1.ComponentEnvironmentStatus
+	// Discovered lists rows without a Component resource, sorted by name,
+	// so the control plane can materialise them.
+	Discovered []DiscoveredComponent
 }
 
 // placement is one top-level observed resource (and the workloads it
@@ -79,6 +91,7 @@ type placement struct {
 type builder struct {
 	in            Input
 	envByKey      map[string]*v1alpha1.SystemEnvironment
+	groupByKey    map[string]string // lower(name|displayName) → declared group name
 	clusterByName map[string]*ClusterInfo
 	clusterByAddr map[string]*ClusterInfo
 	declared      map[string]*v1alpha1.Component
@@ -91,6 +104,7 @@ func newBuilder(in Input) *builder {
 	b := &builder{
 		in:            in,
 		envByKey:      map[string]*v1alpha1.SystemEnvironment{},
+		groupByKey:    map[string]string{},
 		clusterByName: map[string]*ClusterInfo{},
 		clusterByAddr: map[string]*ClusterInfo{},
 		declared:      map[string]*v1alpha1.Component{},
@@ -101,6 +115,12 @@ func newBuilder(in Input) *builder {
 		b.envByKey[strings.ToLower(e.Name)] = e
 		if e.DisplayName != "" {
 			b.envByKey[strings.ToLower(e.DisplayName)] = e
+		}
+	}
+	for _, g := range in.System.Spec.Groups {
+		b.groupByKey[strings.ToLower(g.Name)] = g.Name
+		if g.DisplayName != "" {
+			b.groupByKey[strings.ToLower(g.DisplayName)] = g.Name
 		}
 	}
 	for i := range in.Clusters {
@@ -128,10 +148,19 @@ func Build(in Input) *Result {
 	rows, rowGroup, unassigned := b.assemble(placements)
 
 	statuses := map[string][]v1alpha1.ComponentEnvironmentStatus{}
-	for name, row := range rows {
+	discovered := make([]DiscoveredComponent, 0, len(rows)-len(b.declared))
+	for _, name := range sortedKeys(rows) {
+		row := rows[name]
 		if _, ok := b.declared[name]; ok {
 			statuses[name] = b.statuses(row)
+			continue
 		}
+		discovered = append(discovered, DiscoveredComponent{
+			Name:        name,
+			DisplayName: row.Component.DisplayName,
+			Group:       rowGroup[name],
+			Kind:        v1alpha1.ComponentKind(row.Component.Kind),
+		})
 	}
 
 	if b.legacyCount > 0 {
@@ -158,7 +187,7 @@ func Build(in Input) *Result {
 		return a.Cluster+"/"+a.Namespace+"/"+a.Name < c.Cluster+"/"+c.Namespace+"/"+c.Name
 	})
 
-	return &Result{Grid: g, Unassigned: unassigned, Statuses: statuses}
+	return &Result{Grid: g, Unassigned: unassigned, Statuses: statuses, Discovered: discovered}
 }
 
 // assemble creates a row for every declared component and every discovered
@@ -208,7 +237,7 @@ func (b *builder) place(p *placement, rows map[string]*deploygrid.GridRow, rowGr
 	}
 	if _, ok := rows[p.component]; !ok {
 		rows[p.component] = discoveredRow(p)
-		rowGroup[p.component] = firstNonEmpty(p.group, GroupDefault)
+		rowGroup[p.component] = b.group(p.group)
 	}
 	if cells[p.component] == nil {
 		cells[p.component] = map[string][]*placement{}
@@ -229,12 +258,27 @@ func (b *builder) declaredRows() (map[string]*deploygrid.GridRow, map[string]str
 				DisplayName: firstNonEmpty(c.Spec.DisplayName, name),
 				Description: c.Spec.Description,
 				Kind:        string(c.Spec.Kind),
+				// materialised by discovery and not yet touched by a person
+				Discovered: c.Status.Discovered && c.Generation <= 1,
 			},
 			Cells: map[string]*deploygrid.Cell{},
 		}
-		rowGroup[name] = firstNonEmpty(c.Spec.Group, GroupDefault)
+		rowGroup[name] = b.group(c.Spec.Group)
 	}
 	return rows, rowGroup
+}
+
+// group canonicalises a group name against the System's declared groups
+// (matching name or display name case-insensitively); unknown groups are
+// kept as written and an empty group falls back to GroupDefault.
+func (b *builder) group(name string) string {
+	if name == "" {
+		return GroupDefault
+	}
+	if canonical, ok := b.groupByKey[strings.ToLower(name)]; ok {
+		return canonical
+	}
+	return name
 }
 
 // discoveredRow creates a row for a component no resource declares.
@@ -502,6 +546,9 @@ func (b *builder) cell(ref *deploygrid.ComponentRef, declared *v1alpha1.Componen
 			cell.DesiredVersion = p.root.DesiredVersion
 			cell.Cluster = p.cluster
 			cell.Namespace = p.namespace
+		}
+		if !slices.Contains(cell.Clusters, p.cluster) {
+			cell.Clusters = append(cell.Clusters, p.cluster)
 		}
 		if actual != "" {
 			versions[actual] = true

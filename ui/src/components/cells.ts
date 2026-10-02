@@ -15,7 +15,8 @@ export function cellStatus(cell: Cell): ChipStatus {
 export function cellTitle(cell: Cell): string {
     const lines: string[] = [];
     lines.push(`Health: ${cell.health ?? "Unknown"}`);
-    if (cell.cluster) lines.push(`Cluster: ${cell.cluster}${cell.namespace ? ` / ${cell.namespace}` : ""}`);
+    if ((cell.clusters?.length ?? 0) > 1) lines.push(`Clusters: ${cell.clusters!.join(", ")}`);
+    else if (cell.cluster) lines.push(`Cluster: ${cell.cluster}${cell.namespace ? ` / ${cell.namespace}` : ""}`);
     if (cell.desired_version) lines.push(`Desired: ${cell.desired_version}`);
     if (cell.inconsistent) lines.push(`Inconsistent: more than one version is running`);
     for (const h of cell.hosts ?? []) lines.push(`Host: ${h}`);

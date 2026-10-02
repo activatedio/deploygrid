@@ -30,7 +30,9 @@ function CellCard({env, cell}: { env: string; cell?: Cell }) {
         {cell && <dl className="text-xs text-slate-600 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
             {cell.desired_version && <><dt className="text-slate-400">desired</dt><dd>{cell.desired_version}{cell.drifted && <span className="ml-1 text-amber-600">(drift)</span>}</dd></>}
             <dt className="text-slate-400">health</dt><dd>{cell.health}</dd>
-            {cell.cluster && <><dt className="text-slate-400">cluster</dt><dd>{cell.cluster}{cell.namespace ? ` / ${cell.namespace}` : ""}</dd></>}
+            {(cell.clusters?.length ?? 0) > 1
+                ? <><dt className="text-slate-400">clusters</dt><dd>{cell.clusters!.join(", ")}</dd></>
+                : cell.cluster && <><dt className="text-slate-400">cluster</dt><dd>{cell.cluster}{cell.namespace ? ` / ${cell.namespace}` : ""}</dd></>}
             {cell.inconsistent && <><dt className="text-slate-400">note</dt><dd className="text-amber-600">more than one version running</dd></>}
         </dl>}
         {cell?.hosts?.length ? <ul className="text-xs">

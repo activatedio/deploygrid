@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/activatedio/deploygrid/pkg/apis/deploygrid.activated.io/v1alpha1"
 	"github.com/activatedio/deploygrid/pkg/deploygrid"
 )
 
@@ -79,11 +80,20 @@ func TestE2E(t *testing.T) {
 			require.True(c, resp.IsSuccess(), resp.String())
 			require.Len(c, rows.Items, 2)
 
+			// app-b is not declared: discovery shows it and the reconciler
+			// materialises a Component resource for it
 			row := &deploygrid.GridRow{}
 			resp, err = json(r.R()).SetError(e).SetResult(row).Get("/api/systems/apps/components/app-b")
 			require.NoError(c, err)
 			require.True(c, resp.IsSuccess(), resp.String())
 			require.Equal(c, "app-b", row.Component.Name)
+			require.True(c, row.Component.Discovered)
+			comp := getComponent(t, "../.kind/kubeconfig-ops-cluster-1.yaml", "deploygrid", "app-b")
+			require.NotNil(c, comp, "Component app-b not materialised yet")
+			require.True(c, comp.Status.Discovered)
+			require.Equal(c, "apps", comp.Spec.System)
+			require.Equal(c, "apps", comp.Spec.Group, "group canonicalised against the System")
+			require.Equal(c, v1alpha1.ComponentKindHelmChart, comp.Spec.Kind)
 
 			ul := &deploygrid.ArtifactList{}
 			resp, err = json(r.R()).SetError(e).SetResult(ul).Get("/api/systems/apps/unassigned")

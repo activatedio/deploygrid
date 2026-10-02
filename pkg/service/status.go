@@ -53,6 +53,7 @@ func (w *StatusWriter) Prepare() {
 func (w *StatusWriter) Apply(systemName string, res *grid.Result, changes []history.Change, now time.Time) {
 	ts := metav1.NewTime(now)
 	w.syncSystem(systemName, res, ts)
+	w.materialise(systemName, res.Discovered)
 	for name, statuses := range res.Statuses {
 		w.syncComponent(name, statuses, ts)
 	}
@@ -65,6 +66,71 @@ func (w *StatusWriter) Apply(systemName string, res *grid.Result, changes []hist
 func (w *StatusWriter) Finish() {
 	w.syncClusters(metav1.NewTime(time.Now()))
 	w.syncViews()
+}
+
+// materialise creates a Component resource for every discovered row of a
+// System that allows it, so the row can be enriched in place. The next pass
+// treats the new resource as declared and writes its status.
+func (w *StatusWriter) materialise(systemName string, discovered []grid.DiscoveredComponent) {
+	if len(discovered) == 0 {
+		return
+	}
+	sys, err := w.controllers.SystemsCache.Get(w.namespace, systemName)
+	if err != nil || !sys.Spec.Discovery.CreatesComponents() {
+		return
+	}
+	for _, d := range discovered {
+		_, err := w.controllers.ComponentsCache.Get(w.namespace, d.Name)
+		switch {
+		case err == nil:
+			continue
+		case !apierrors.IsNotFound(err):
+			log.Error().Err(err).Str("component", d.Name).Msg("get component")
+			continue
+		}
+		if err := w.createDiscovered(sys, d); err != nil {
+			log.Error().Err(err).Str("component", d.Name).Msg("materialise discovered component")
+		}
+	}
+}
+
+func (w *StatusWriter) createDiscovered(sys *v1alpha1.System, d grid.DiscoveredComponent) error {
+	comp := &v1alpha1.Component{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      d.Name,
+			Namespace: w.namespace,
+			Labels:    map[string]string{grid.LabelSystem: sys.Name},
+			OwnerReferences: []metav1.OwnerReference{{
+				APIVersion: v1alpha1.SchemeGroupVersion.String(),
+				Kind:       "System",
+				Name:       sys.Name,
+				UID:        sys.UID,
+			}},
+		},
+		Spec: v1alpha1.ComponentSpec{
+			System: sys.Name,
+			Kind:   d.Kind,
+		},
+	}
+	if d.DisplayName != d.Name {
+		comp.Spec.DisplayName = d.DisplayName
+	}
+	if d.Group != grid.GroupDefault {
+		comp.Spec.Group = d.Group
+	}
+	created, err := w.controllers.Components.Create(comp)
+	if err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			return nil
+		}
+		return err
+	}
+	created.Status.Discovered = true
+	if _, err := w.controllers.Components.UpdateStatus(created); err != nil {
+		return fmt.Errorf("mark discovered: %w", err)
+	}
+	log.Info().Str("system", sys.Name).Str("component", d.Name).Msg("materialised discovered component")
+	return nil
 }
 
 // recordEvent emits a Kubernetes Event on the Component for a version

@@ -115,6 +115,19 @@ func getCluster(t *testing.T, kubeconfig, namespace, name string) *v1alpha1.Clus
 	return out
 }
 
+// getComponent returns a Component resource, or nil when it does not exist.
+func getComponent(t *testing.T, kubeconfig, namespace, name string) *v1alpha1.Component {
+	t.Helper()
+	_, dc := kubeClients(t, kubeconfig)
+	u, err := dc.Resource(v1alpha1.SchemeGroupVersion.WithResource(v1alpha1.ComponentResourceName)).Namespace(namespace).Get(context.Background(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil
+	}
+	out := &v1alpha1.Component{}
+	require.NoError(t, k8s.DecodeMap(u.Object, out))
+	return out
+}
+
 // startCollector runs an in-process collector against the given cluster for
 // the duration of the test.
 func startCollector(t *testing.T, server, cluster, token, kubeconfig string) {

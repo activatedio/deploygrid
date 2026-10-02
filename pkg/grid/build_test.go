@@ -143,7 +143,7 @@ func fixture(t *testing.T) grid.Input {
 				application("dev-app-a", "app-a", "Dev", "Apps", app1Addr, "dev-app-a", "app-a", "1.16.1"),
 				application("qa-app-a", "app-a", "QA", "Apps", app1Addr, "qa-app-a", "app-a", "1.17.0"),
 				application("stage-app-a", "app-a", "Stage", "Apps", app2Addr, "stage-app-a", "app-a", "1.16.1"),
-				application("dev-app-b", "app-b", "Dev", "Apps", app1Addr, "dev-app-b", "app-b", "2.0.0"),
+				application("dev-app-b", "app-b", "Dev", "APPS", app1Addr, "dev-app-b", "app-b", "2.0.0"), // group matched case-insensitively
 				application("lost", "app-c", "Prod", "Apps", "https://nowhere", "lost", "app-c", "1.0.0"),
 			),
 			app1Cluster: snapshot(t,
@@ -238,6 +238,12 @@ func TestBuild(t *testing.T) {
 	a.Len(res.Statuses["worker"], 1)
 	a.NotContains(res.Statuses, "app-b")
 	a.NotContains(res.Statuses, "other-system-comp")
+	require.Len(t, res.Discovered, 2, "app-b and metrics have no Component resource")
+	a.Equal("app-b", res.Discovered[0].Name)
+	a.Equal("Apps", res.Discovered[0].Group)
+	a.Equal(v1alpha1.ComponentKindHelmChart, res.Discovered[0].Kind)
+	a.Equal("metrics", res.Discovered[1].Name)
+	a.Equal([]string{app1Cluster}, dev.Clusters)
 
 	// labelled resources in system namespaces are still rows
 	require.Len(t, g.Groups, 3, "Apps, Batch and Default (metrics)")
@@ -307,5 +313,6 @@ func TestBuild_Inconsistent(t *testing.T) {
 	}
 	require.NotNil(t, cell)
 	assert.True(t, cell.Inconsistent)
+	assert.Equal(t, []string{app1Cluster}, cell.Clusters, "both workloads run on one cluster")
 	assert.Empty(t, res.Grid.Warnings, "fully labelled resources raise no warnings: %v", res.Grid.Warnings)
 }

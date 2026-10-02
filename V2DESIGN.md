@@ -443,12 +443,16 @@ degraded" filter on the grid.
 
 ## 9. Decisions to confirm
 
-1. **Discovery default.** Auto-create `Component` CRs for unmatched artifacts
-   (`status.discovered: true`), or only list them under `/unassigned` until a
-   person declares them? Proposed: list only by default, opt-in per System.
-2. **Cell per cluster or per environment.** When one environment spans two
-   clusters, show one cell marked *inconsistent* (proposed) or one sub-column
-   per cluster?
+1. **Discovery default.** *Decided 2026-10-01:* auto-create. A resource that
+   carries a component identity no `Component` declares becomes a `Component`
+   resource with `status.discovered: true` (spec filled from what was
+   observed: system, group, kind, display name) so it can be enriched in
+   place. `System.spec.discovery.createComponents: false` turns this off for
+   a system, in which case discovered rows stay in memory only. Resources
+   with no identity at all are still listed under `/unassigned`.
+2. **Cell per cluster or per environment.** *Decided 2026-10-01:* one cell
+   per environment. When clusters disagree the cell is marked *inconsistent*
+   and lists every cluster it was built from.
 3. **History storage.** *Decided 2026-10-01:* Events first. Version changes
    are kept in an in-memory ring per cell and recorded as Kubernetes Events
    on the Component; a durable store is added only if the Event TTL proves

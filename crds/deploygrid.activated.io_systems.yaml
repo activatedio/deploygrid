@@ -55,6 +55,19 @@ spec:
             properties:
               description:
                 type: string
+              discovery:
+                description: |-
+                  SystemDiscovery controls what happens to observed resources that carry a
+                  component identity no Component resource declares.
+                properties:
+                  createComponents:
+                    description: |-
+                      CreateComponents materialises a Component resource (with
+                      status.discovered: true) for every discovered row so it can be
+                      enriched with a display name, group, links or a parent. Defaults to
+                      true.
+                    type: boolean
+                type: object
               displayName:
                 type: string
               environments:

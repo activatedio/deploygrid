@@ -47,6 +47,22 @@ type SystemGroup struct {
 	Description string `json:"description,omitempty"`
 }
 
+// SystemDiscovery controls what happens to observed resources that carry a
+// component identity no Component resource declares.
+type SystemDiscovery struct {
+	// CreateComponents materialises a Component resource (with
+	// status.discovered: true) for every discovered row so it can be
+	// enriched with a display name, group, links or a parent. Defaults to
+	// true.
+	// +optional
+	CreateComponents *bool `json:"createComponents,omitempty"`
+}
+
+// CreatesComponents reports the effective CreateComponents setting.
+func (d *SystemDiscovery) CreatesComponents() bool {
+	return d == nil || d.CreateComponents == nil || *d.CreateComponents
+}
+
 // SystemSpec defines the desired state of System.
 type SystemSpec struct {
 	// +optional
@@ -63,6 +79,8 @@ type SystemSpec struct {
 	// +listType=map
 	// +listMapKey=name
 	Groups []SystemGroup `json:"groups,omitempty"`
+	// +optional
+	Discovery *SystemDiscovery `json:"discovery,omitempty"`
 }
 
 // SystemStatus defines the observed state of System.

@@ -21,7 +21,10 @@ desired version, drift, health, cluster, namespace, hosts and links.
 
 * **System** – one grid: ordered environments (columns) and groups (row sections).
 * **Component** – one row, with a stable identity across environments. Declared
-  as a resource, or *discovered* from labels on what is running.
+  as a resource, or *discovered* from labels on what is running; discovered
+  rows are materialised as Component resources (`status.discovered: true`) so
+  they can be enriched in place (`spec.discovery.createComponents` on the
+  System turns this off).
 * **Cluster** – a registered cluster: its API addresses (so Argo CD
   destinations resolve), the environment its namespaces map to, and how it is
   observed.
