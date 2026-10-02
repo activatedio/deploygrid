@@ -22,7 +22,7 @@ func TestResources(t *testing.T) {
 	cases := map[string]s{
 		"applications": {
 			arrange: func() (dynamic.Interface, func(p dynamic.Interface) repository.ResourceRepository) {
-				return opsCl, k8s.NewApplicationRepository
+				return opsCl, func(c dynamic.Interface) repository.ResourceRepository { return k8s.NewApplicationRepository(c, nil) }
 			},
 			assert: func(cancel context.CancelFunc, store repository.RecordingResourceStore) {
 
@@ -44,7 +44,7 @@ func TestResources(t *testing.T) {
 		},
 		"deployments": {
 			arrange: func() (dynamic.Interface, func(p dynamic.Interface) repository.ResourceRepository) {
-				return apps1Cl, k8s.NewDeploymentRepository
+				return apps1Cl, func(c dynamic.Interface) repository.ResourceRepository { return k8s.NewDeploymentRepository(c, nil) }
 			},
 			assert: func(cancel context.CancelFunc, store repository.RecordingResourceStore) {
 

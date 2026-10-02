@@ -298,11 +298,13 @@ func RunFromConfig(ctx context.Context, cfg *config.CollectorConfig, sources *co
 	if err != nil {
 		return err
 	}
+	dc, err := discovery.NewDiscoveryClientForConfig(restConfig)
+	if err != nil {
+		return err
+	}
 	k8sVersion := ""
-	if dc, err := discovery.NewDiscoveryClientForConfig(restConfig); err == nil {
-		if v, err := dc.ServerVersion(); err == nil {
-			k8sVersion = v.GitVersion
-		}
+	if v, err := dc.ServerVersion(); err == nil {
+		k8sVersion = v.GitVersion
 	}
 
 	log.Info().Str("server", cfg.Server).Str("cluster", cfg.Cluster).Str("kubernetes", k8sVersion).Msg("starting collector")
@@ -312,7 +314,7 @@ func RunFromConfig(ctx context.Context, cfg *config.CollectorConfig, sources *co
 		Token:             token,
 		Flush:             time.Duration(cfg.FlushSeconds) * time.Second,
 		Heartbeat:         time.Duration(cfg.HeartbeatSeconds) * time.Second,
-		Resources:         k8s.NewResources(client, sources.ApplicationKinds),
+		Resources:         k8s.NewResources(client, dc, sources.ApplicationKinds),
 		KubernetesVersion: k8sVersion,
 	}).Run(ctx)
 	return nil

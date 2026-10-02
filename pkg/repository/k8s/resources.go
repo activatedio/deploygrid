@@ -9,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 
 	"github.com/activatedio/deploygrid/pkg/config"
@@ -122,9 +123,10 @@ func ChartVersionFromLabel(label string) string {
 	return v
 }
 
-func NewApplicationRepository(client dynamic.Interface) repository.ResourceRepository {
+func NewApplicationRepository(client dynamic.Interface, disc discovery.ServerResourcesInterface) repository.ResourceRepository {
 	return NewResourceRepository(ResourceRepositoryParams{
-		Client: client,
+		Client:    client,
+		Discovery: disc,
 		GroupVersionResource: schema.GroupVersionResource{
 			Group:    "argoproj.io",
 			Version:  "v1alpha1",
@@ -170,9 +172,10 @@ func NewApplicationRepository(client dynamic.Interface) repository.ResourceRepos
 	})
 }
 
-func NewDeploymentRepository(client dynamic.Interface) repository.ResourceRepository {
+func NewDeploymentRepository(client dynamic.Interface, disc discovery.ServerResourcesInterface) repository.ResourceRepository {
 	return NewResourceRepository(ResourceRepositoryParams{
-		Client: client,
+		Client:    client,
+		Discovery: disc,
 		GroupVersionResource: schema.GroupVersionResource{
 			Group:    "apps",
 			Version:  "v1",
@@ -216,15 +219,19 @@ func DeploymentResource(dep *appsv1.Deployment) *repository.Resource {
 	}
 }
 
-func NewResources(client dynamic.Interface, kinds []config.ApplicationKindConfig) *repository.Resources {
+// disc gates each watch on the resource being served by the cluster, so a
+// cluster without Argo CD or without a given operator is simply skipped for
+// that kind (and picked up if its CRD appears later). Pass nil to watch
+// unconditionally.
+func NewResources(client dynamic.Interface, disc discovery.ServerResourcesInterface, kinds []config.ApplicationKindConfig) *repository.Resources {
 	res := &repository.Resources{
-		Applications: NewApplicationRepository(client),
-		Deployment:   NewDeploymentRepository(client),
-		Ingress:      NewIngressRepository(client),
+		Applications: NewApplicationRepository(client, disc),
+		Deployment:   NewDeploymentRepository(client, disc),
+		Ingress:      NewIngressRepository(client, disc),
 		Custom:       map[string]repository.ResourceRepository{},
 	}
 	for _, k := range kinds {
-		res.Custom[k.Key()] = NewOperatorApplicationRepository(client, k)
+		res.Custom[k.Key()] = NewOperatorApplicationRepository(client, disc, k)
 	}
 	return res
 }

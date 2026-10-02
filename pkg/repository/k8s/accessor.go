@@ -10,6 +10,7 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -66,12 +67,15 @@ func (c *resourceRepositoryClusterAwareAccessor) Get(ctx context.Context, cluste
 		}
 
 		client, err := dynamic.NewForConfig(cfg)
-
+		if err != nil {
+			return nil, err
+		}
+		disc, err := discovery.NewDiscoveryClientForConfig(cfg)
 		if err != nil {
 			return nil, err
 		}
 
-		return NewResources(client, c.kinds), nil
+		return NewResources(client, disc, c.kinds), nil
 	})
 
 	if err != nil {

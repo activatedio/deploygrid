@@ -9,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/util/jsonpath"
 
@@ -223,13 +224,14 @@ func (c *OperatorApplicationConverter) Convert(obj *unstructured.Unstructured) (
 // NewOperatorApplicationRepository observes one operator application kind.
 // An invalid configuration yields a repository that reports the error to
 // its store instead of panicking at start.
-func NewOperatorApplicationRepository(client dynamic.Interface, cfg config.ApplicationKindConfig) repository.ResourceRepository {
+func NewOperatorApplicationRepository(client dynamic.Interface, disc discovery.ServerResourcesInterface, cfg config.ApplicationKindConfig) repository.ResourceRepository {
 	conv, err := NewOperatorApplicationConverter(cfg)
 	if err != nil {
 		return &brokenRepository{err: fmt.Errorf("application kind %s: %w", cfg.Key(), err)}
 	}
 	return NewResourceRepository(ResourceRepositoryParams{
-		Client: client,
+		Client:    client,
+		Discovery: disc,
 		GroupVersionResource: schema.GroupVersionResource{
 			Group:    cfg.Group,
 			Version:  cfg.Version,

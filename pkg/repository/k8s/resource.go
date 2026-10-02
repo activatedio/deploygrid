@@ -6,12 +6,14 @@ import (
 
 	"github.com/go-errors/errors"
 	"github.com/rs/zerolog/log"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/tools/cache"
 
@@ -21,8 +23,57 @@ import (
 
 type resourceRepository struct {
 	client     dynamic.Interface
+	discovery  discovery.ServerResourcesInterface // nil: watch without checking
 	gvr        schema.GroupVersionResource
 	toResource func(obj *unstructured.Unstructured) (*repository.Resource, error)
+}
+
+// servedCheckInterval is how often an unserved kind is re-checked, so a CRD
+// installed later is picked up without a restart.
+const servedCheckInterval = time.Minute
+
+// served reports whether the API server offers the repository's resource.
+func (c *resourceRepository) served() (bool, error) {
+	list, err := c.discovery.ServerResourcesForGroupVersion(c.gvr.GroupVersion().String())
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	for _, r := range list.APIResources {
+		if r.Name == c.gvr.Resource {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// waitUntilServed blocks until the resource is served or ctx ends. A kind
+// whose CRD is absent is logged once, not reported to the store: it is a
+// normal state for a cluster that simply does not run that software.
+func (c *resourceRepository) waitUntilServed(ctx context.Context) bool {
+	logged := false
+	for {
+		ok, err := c.served()
+		switch {
+		case err != nil:
+			log.Warn().Err(err).Str("resource", c.gvr.String()).Msg("discovery failed; retrying")
+		case ok:
+			if logged {
+				log.Info().Str("resource", c.gvr.String()).Msg("resource is now served; starting watch")
+			}
+			return true
+		case !logged:
+			log.Info().Str("resource", c.gvr.String()).Msg("resource not served by this cluster; will check again periodically")
+			logged = true
+		}
+		select {
+		case <-ctx.Done():
+			return false
+		case <-time.After(servedCheckInterval):
+		}
+	}
 }
 
 type unstructuredListWatcher struct {
@@ -108,6 +159,18 @@ func (c *resourceStoreAdapter) Resync() error {
 }
 
 func (c *resourceRepository) Watch(ctx context.Context, store repository.ResourceStore) {
+	if c.discovery == nil {
+		c.watch(ctx, store)
+		return
+	}
+	go func() {
+		if c.waitUntilServed(ctx) {
+			c.watch(ctx, store)
+		}
+	}()
+}
+
+func (c *resourceRepository) watch(ctx context.Context, store repository.ResourceStore) {
 
 	errorChan := make(chan k8s.RuntimeError)
 
@@ -165,7 +228,9 @@ func (c *resourceRepository) Watch(ctx context.Context, store repository.Resourc
 type ToResource func(obj *unstructured.Unstructured) (*repository.Resource, error)
 
 type ResourceRepositoryParams struct {
-	Client               dynamic.Interface
+	Client dynamic.Interface
+	// Discovery, when set, gates the watch on the resource being served.
+	Discovery            discovery.ServerResourcesInterface
 	GroupVersionResource schema.GroupVersionResource
 	ToResource           ToResource
 }
@@ -173,6 +238,7 @@ type ResourceRepositoryParams struct {
 func NewResourceRepository(params ResourceRepositoryParams) repository.ResourceRepository {
 	return &resourceRepository{
 		client:     params.Client,
+		discovery:  params.Discovery,
 		gvr:        params.GroupVersionResource,
 		toResource: params.ToResource,
 	}

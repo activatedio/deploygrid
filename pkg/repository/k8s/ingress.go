@@ -4,6 +4,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 
 	"github.com/activatedio/deploygrid/pkg/repository"
@@ -17,9 +18,10 @@ func IngressName(namespace, name string) string {
 // NewIngressRepository observes networking.k8s.io/v1 Ingresses. An ingress
 // contributes its hosts to the component it belongs to, either through the
 // Helm release that manages it or through deploygrid labels.
-func NewIngressRepository(client dynamic.Interface) repository.ResourceRepository {
+func NewIngressRepository(client dynamic.Interface, disc discovery.ServerResourcesInterface) repository.ResourceRepository {
 	return NewResourceRepository(ResourceRepositoryParams{
-		Client: client,
+		Client:    client,
+		Discovery: disc,
 		GroupVersionResource: schema.GroupVersionResource{
 			Group:    "networking.k8s.io",
 			Version:  "v1",

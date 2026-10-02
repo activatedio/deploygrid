@@ -132,14 +132,20 @@ func (a *appContext) stop() {
 	}
 }
 
-func controllerFactory(rest *rest.Config) (controller.SharedControllerFactory, error) {
+// controllerFactory builds the shared informer machinery. Every informer is
+// scoped to the control namespace: the server's RBAC for Secrets (collector
+// tokens) is a namespaced Role, and a cluster-wide Secret list would be
+// forbidden.
+func controllerFactory(rest *rest.Config, namespace string) (controller.SharedControllerFactory, error) {
 	rateLimit := workqueue.NewTypedItemExponentialFailureRateLimiter[any](5*time.Millisecond, 60*time.Second)
 	clientFactory, err := client.NewSharedClientFactory(rest, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	cacheFactory := cache.NewSharedCachedFactory(clientFactory, nil)
+	cacheFactory := cache.NewSharedCachedFactory(clientFactory, &cache.SharedCacheFactoryOptions{
+		DefaultNamespace: namespace,
+	})
 	return controller.NewSharedControllerFactory(cacheFactory, &controller.SharedControllerFactoryOptions{
 		DefaultRateLimiter: rateLimit,
 		DefaultWorkers:     50,
@@ -150,7 +156,7 @@ func newContext(cl *rest.Config, namespace string) (*appContext, error) {
 
 	cl.RateLimiter = ratelimit.None
 
-	scf, err := controllerFactory(cl)
+	scf, err := controllerFactory(cl, namespace)
 	if err != nil {
 		return nil, err
 	}
