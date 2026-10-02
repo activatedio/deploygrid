@@ -1,7 +1,8 @@
 import useGrid from "../hooks/useGrid.ts";
 import {components} from "../api/schema";
-import {Fragment, ReactNode} from "react";
+import {Fragment, ReactNode, useState} from "react";
 import Chip from "./Chip.tsx";
+import {cellStatus, cellTitle} from "./cells.ts";
 
 type Cell = components["schemas"]["DeploygridCell"];
 type Row = components["schemas"]["DeploygridGridRow"];
@@ -9,31 +10,15 @@ type Environment = components["schemas"]["DeploygridEnvironment"];
 
 interface TableProps {
     system: string;
+    onSelect: (component: string) => void;
 }
 
 const thClass = `px-6 py-3 text-start text-xs font-medium text-slate-600`;
 const tdClass = `px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-800 align-top`;
 
-function cellStatus(cell: Cell): "success" | "warning" | "error" | "default" | "info" {
-    if (cell.health === "Degraded") return "error";
-    if (cell.drifted || cell.inconsistent) return "warning";
-    if (cell.health === "Progressing") return "info";
-    if (cell.health === "Healthy") return "success";
-    return "default";
-}
-
-function cellTitle(cell: Cell): string {
-    const lines: string[] = [];
-    lines.push(`Health: ${cell.health ?? "Unknown"}`);
-    if (cell.cluster) lines.push(`Cluster: ${cell.cluster}${cell.namespace ? ` / ${cell.namespace}` : ""}`);
-    if (cell.desired_version) lines.push(`Desired: ${cell.desired_version}`);
-    if (cell.inconsistent) lines.push(`Inconsistent: more than one version is running`);
-    for (const h of cell.hosts ?? []) lines.push(`Host: ${h}`);
-    for (const a of cell.artifacts ?? []) {
-        const versions = (a.versions ?? []).map(v => `${v.name}=${v.value}`).join(", ");
-        lines.push(`${a.kind} ${a.namespace ? a.namespace + "/" : ""}${a.name}${versions ? `: ${versions}` : ""}`);
-    }
-    return lines.join("\n");
+function rowNeedsAttention(row: Row): boolean {
+    return Object.values(row.cells ?? {}).some(c => c.drifted || c.inconsistent || c.health === "Degraded")
+        || (row.children ?? []).some(rowNeedsAttention);
 }
 
 function CellView({cell}: { cell?: Cell }) {
@@ -50,12 +35,12 @@ function CellView({cell}: { cell?: Cell }) {
     </div>;
 }
 
-function RowHeader({row, indent}: { row: Row; indent: number }) {
+function RowHeader({row, indent, onSelect}: { row: Row; indent: number; onSelect: (component: string) => void }) {
     const c = row.component ?? {name: "?"};
     const firstCell = Object.values(row.cells ?? {})[0];
     return <div className="flex flex-col gap-1" style={{paddingLeft: `${indent}em`}}>
         <span>
-            {c.display_name ?? c.name}
+            <button className="hover:underline text-left" onClick={() => c.name && onSelect(c.name)}>{c.display_name ?? c.name}</button>
             {c.discovered && <span className="ml-2 text-xs font-normal text-slate-400" title="No Component resource declares this row">discovered</span>}
         </span>
         <span className="text-xs text-gray-400">
@@ -67,12 +52,13 @@ function RowHeader({row, indent}: { row: Row; indent: number }) {
     </div>
 }
 
-function renderRows(rows: Row[], environments: Environment[], indent: number): ReactNode[] {
+function renderRows(rows: Row[], environments: Environment[], indent: number, onSelect: (component: string) => void, attentionOnly: boolean): ReactNode[] {
     const out: ReactNode[] = [];
     for (const row of rows) {
+        if (attentionOnly && !rowNeedsAttention(row)) continue;
         const name = row.component?.name ?? "";
         out.push(<tr key={name}>
-            <td className={tdClass}><RowHeader row={row} indent={indent}/></td>
+            <td className={tdClass}><RowHeader row={row} indent={indent} onSelect={onSelect}/></td>
             {environments.map(env => (
                 <td className={tdClass} key={env.name}>
                     <CellView cell={env.name ? row.cells?.[env.name] : undefined}/>
@@ -80,19 +66,24 @@ function renderRows(rows: Row[], environments: Environment[], indent: number): R
             ))}
         </tr>);
         if (row.children?.length) {
-            out.push(...renderRows(row.children, environments, indent + 1));
+            out.push(...renderRows(row.children, environments, indent + 1, onSelect, attentionOnly));
         }
     }
     return out;
 }
 
-function Table({system}: TableProps) {
+function Table({system, onSelect}: TableProps) {
     const {data} = useGrid(system);
+    const [attentionOnly, setAttentionOnly] = useState(false);
     const environments = data.environments ?? [];
-    const groups = data.groups ?? [];
+    const groups = (data.groups ?? []).filter(g => !attentionOnly || (g.rows ?? []).some(rowNeedsAttention));
     const notices = [...(data.errors ?? []), ...(data.warnings ?? [])];
 
     return <div className="flex flex-col gap-4">
+        <label className="flex items-center gap-2 text-sm text-slate-600 self-end">
+            <input type="checkbox" checked={attentionOnly} onChange={e => setAttentionOnly(e.target.checked)}/>
+            Only drifted, inconsistent or degraded
+        </label>
         {notices.length > 0 && (
             <ul className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-900">
                 {notices.map((n, i) => <li key={i}>{n}</li>)}
@@ -110,7 +101,7 @@ function Table({system}: TableProps) {
                 {groups.length === 0 && (
                     <tr>
                         <td className={tdClass} colSpan={environments.length + 1}>
-                            <span className="text-slate-400">Nothing observed yet for this system.</span>
+                            <span className="text-slate-400">{attentionOnly ? "Nothing needs attention." : "Nothing observed yet for this system."}</span>
                         </td>
                     </tr>
                 )}
@@ -119,7 +110,7 @@ function Table({system}: TableProps) {
                         <tr className="bg-slate-50">
                             <td className={`${tdClass} font-bold`} colSpan={environments.length + 1}>{group.display_name ?? group.name}</td>
                         </tr>
-                        {renderRows(group.rows ?? [], environments, 0)}
+                        {renderRows(group.rows ?? [], environments, 0, onSelect, attentionOnly)}
                     </Fragment>
                 ))}
                 </tbody>

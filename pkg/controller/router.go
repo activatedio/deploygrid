@@ -16,6 +16,7 @@ type RouterParams struct {
 	Grid          Grid
 	Systems       Systems
 	Observations  Observations
+	Configs       Configurations
 	Health        Health
 }
 
@@ -30,6 +31,13 @@ const (
 	PathSystemComponent  = PathSystemComponents + "/{" + PathParamComponent + "}"
 	PathSystemUnassigned = PathSystem + "/unassigned"
 	PathObservations     = PathBase + "/observations"
+
+	PathSystemConfigurations = PathSystem + "/configurations"
+	PathSystemConfiguration  = PathSystemConfigurations + "/{" + PathParamConfiguration + "}"
+	PathSystemViews          = PathSystem + "/views"
+	PathSystemView           = PathSystemViews + "/{" + PathParamView + "}"
+	PathSystemHistory        = PathSystem + "/history"
+	PathComponentHistory     = PathSystemComponent + "/history"
 )
 
 func NewRouter(params RouterParams) *mux.Router {
@@ -50,6 +58,12 @@ func NewRouter(params RouterParams) *mux.Router {
 	r.HandleFunc(PathSystemComponent, params.Systems.Component).Methods(http.MethodGet)
 	r.HandleFunc(PathSystemUnassigned, params.Systems.Unassigned).Methods(http.MethodGet)
 	r.HandleFunc(PathObservations, params.Observations.Post).Methods(http.MethodPost)
+	r.HandleFunc(PathSystemConfigurations, params.Configs.Names).Methods(http.MethodGet)
+	r.HandleFunc(PathSystemConfiguration, params.Configs.Values).Methods(http.MethodGet)
+	r.HandleFunc(PathSystemViews, params.Configs.Views).Methods(http.MethodGet)
+	r.HandleFunc(PathSystemView, params.Configs.Render).Methods(http.MethodGet)
+	r.HandleFunc(PathSystemHistory, params.Configs.SystemHistory).Methods(http.MethodGet)
+	r.HandleFunc(PathComponentHistory, params.Configs.ComponentHistory).Methods(http.MethodGet)
 
 	_su := params.SwaggerConfig.SwaggerUiUrl
 

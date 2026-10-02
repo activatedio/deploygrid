@@ -6,6 +6,7 @@ import (
 	"github.com/activatedio/deploygrid/pkg/apis/deploygrid.activated.io/v1alpha1"
 	"github.com/activatedio/deploygrid/pkg/deploygrid"
 	"github.com/activatedio/deploygrid/pkg/grid"
+	"github.com/activatedio/deploygrid/pkg/history"
 )
 
 // Catalog supplies the declared half of the model: Systems, Components and
@@ -17,6 +18,26 @@ type Catalog interface {
 	System(name string) (*v1alpha1.System, error)
 	Components() ([]*v1alpha1.Component, error)
 	Clusters() ([]grid.ClusterInfo, error)
+	Configurations() ([]*v1alpha1.Configuration, error)
+	ConfigurationViews() ([]*v1alpha1.ConfigurationView, error)
+}
+
+// HistoryService answers version-change queries.
+type HistoryService interface {
+	List(ctx context.Context, q history.Query) ([]history.Change, error)
+}
+
+// ConfigurationService merges Configurations and renders views.
+type ConfigurationService interface {
+	// Names lists the configuration names of a system with the environments
+	// that override them.
+	Names(ctx context.Context, system string) ([]*deploygrid.ConfigurationInfo, error)
+	// Values returns the merged document for one configuration name.
+	Values(ctx context.Context, system, name, environment string) (any, error)
+	// Views lists the views of a system.
+	Views(ctx context.Context, system string) ([]*deploygrid.ViewInfo, error)
+	// Render executes a view for an environment.
+	Render(ctx context.Context, system, view, environment string) (content []byte, contentType string, err error)
 }
 
 // SystemService lists the Systems (grids) known to this server.
@@ -35,28 +56,4 @@ type GridService interface {
 	Unassigned(ctx context.Context, system string) ([]*deploygrid.Artifact, error)
 	// BuildAll builds every System; used by the status writer.
 	BuildAll(ctx context.Context) (map[string]*grid.Result, error)
-}
-
-type Metadata map[string]any
-
-type MetadataCriteria struct {
-	System      string
-	Environment string
-	Path        string
-}
-
-type MetadataService interface {
-	Set(ctx context.Context, criteria MetadataCriteria, metadata Metadata) error
-	Get(ctx context.Context, criteria MetadataCriteria) (Metadata, error)
-}
-
-// ResponseWriter abstracts simple operations for an http response writer
-type ResponseWriter interface {
-	Write([]byte) (int, error)
-	SetContentType(string)
-}
-
-// MetadataRenderer renders metadata for the given view name
-type MetadataRenderer interface {
-	Render(ctxt context.Context, rw ResponseWriter, criteria MetadataCriteria, viewName string) error
 }

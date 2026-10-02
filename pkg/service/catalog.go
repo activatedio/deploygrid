@@ -94,6 +94,14 @@ func (c *configCatalog) Clusters() ([]grid.ClusterInfo, error) {
 	return c.clusters, nil
 }
 
+func (c *configCatalog) Configurations() ([]*v1alpha1.Configuration, error) {
+	return nil, nil
+}
+
+func (c *configCatalog) ConfigurationViews() ([]*v1alpha1.ConfigurationView, error) {
+	return nil, nil
+}
+
 func NewConfigCatalog(clusters *config.ClustersConfig) Catalog {
 	s := &v1alpha1.System{
 		ObjectMeta: metav1.ObjectMeta{Name: DefaultSystemName},
@@ -152,6 +160,24 @@ func (c *controlCatalog) Clusters() ([]grid.ClusterInfo, error) {
 	}
 	slices.SortFunc(crs, func(a, b *v1alpha1.Cluster) int { return strings.Compare(a.Name, b.Name) })
 	return mergeClusters(c.configured, crs), nil
+}
+
+func (c *controlCatalog) Configurations() ([]*v1alpha1.Configuration, error) {
+	items, err := c.controllers.ConfigurationsCache.List(c.namespace, labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+	slices.SortFunc(items, func(a, b *v1alpha1.Configuration) int { return strings.Compare(a.Name, b.Name) })
+	return items, nil
+}
+
+func (c *controlCatalog) ConfigurationViews() ([]*v1alpha1.ConfigurationView, error) {
+	items, err := c.controllers.ConfigurationViewsCache.List(c.namespace, labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+	slices.SortFunc(items, func(a, b *v1alpha1.ConfigurationView) int { return strings.Compare(a.Name, b.Name) })
+	return items, nil
 }
 
 func NewControlCatalog(controllers *k8s.Controllers, control *config.ControlConfig, clusters *config.ClustersConfig) Catalog {

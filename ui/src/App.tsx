@@ -7,20 +7,30 @@ import Loading from "./components/Loading.tsx";
 import {ErrorBoundary} from "react-error-boundary";
 import Error from "./components/Error.tsx";
 import SystemPicker from "./components/SystemPicker.tsx";
+import ComponentDetail from "./components/ComponentDetail.tsx";
 
 const queryClient = new QueryClient();
 
-function systemFromHash(): string | undefined {
-    const m = window.location.hash.match(/^#\/systems\/([^/]+)/);
-    return m ? decodeURIComponent(m[1]) : undefined;
+interface Route {
+    system?: string;
+    component?: string;
+}
+
+function routeFromHash(): Route {
+    const m = window.location.hash.match(/^#\/systems\/([^/]+)(?:\/components\/([^/]+))?/);
+    if (!m) return {};
+    return {system: decodeURIComponent(m[1]), component: m[2] ? decodeURIComponent(m[2]) : undefined};
 }
 
 function App() {
-    const [system, setSystem] = useState<string | undefined>(systemFromHash);
+    const [route, setRoute] = useState<Route>(routeFromHash);
+    const system = route.system;
 
-    const select = (name: string) => {
-        window.location.hash = `#/systems/${encodeURIComponent(name)}`;
-        setSystem(name);
+    const navigate = (r: Route) => {
+        window.location.hash = r.system
+            ? `#/systems/${encodeURIComponent(r.system)}${r.component ? `/components/${encodeURIComponent(r.component)}` : ""}`
+            : "";
+        setRoute(r);
     };
 
     return (
@@ -28,13 +38,15 @@ function App() {
             <Layout header={
                 <ErrorBoundary fallback={<Error/>}>
                     <Suspense fallback={<Loading/>}>
-                        <SystemPicker value={system} onChange={select}/>
+                        <SystemPicker value={system} onChange={name => navigate({system: name})}/>
                     </Suspense>
                 </ErrorBoundary>
             }>
                 <ErrorBoundary fallback={<Error/>}>
                     <Suspense fallback={<Loading/>}>
-                        {system && <Table system={system}/>}
+                        {system && route.component
+                            ? <ComponentDetail system={system} component={route.component} onBack={() => navigate({system})}/>
+                            : system && <Table system={system} onSelect={component => navigate({system, component})}/>}
                     </Suspense>
                 </ErrorBoundary>
             </Layout>

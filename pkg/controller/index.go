@@ -11,6 +11,7 @@ func Index() fx.Option {
 		NewGrid,
 		NewSystems,
 		NewObservations,
+		NewConfigurations,
 		NewRouter,
 	))
 

@@ -285,6 +285,156 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/systems/{system}/components/{component}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Version changes of one component, newest first. */
+        get: {
+            parameters: {
+                query?: {
+                    environment?: string;
+                    /** @description RFC 3339 timestamp */
+                    since?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    system: string;
+                    component: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ControllerHistoryList"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MuxError"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/systems/{system}/configurations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Configuration names of the system and the environments that override them. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    system: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DeploygridConfigurationList"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MuxError"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/systems/{system}/configurations/{configuration}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Merged values of one configuration; environment documents deep-merge over the system-wide one. */
+        get: {
+            parameters: {
+                query?: {
+                    environment?: string;
+                };
+                header?: never;
+                path: {
+                    system: string;
+                    configuration: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DeploygridConfigurationValues"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MuxError"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/systems/{system}/grid": {
         parameters: {
             query?: never;
@@ -311,6 +461,58 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["DeploygridGrid"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MuxError"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/systems/{system}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Version changes across the system, newest first. */
+        get: {
+            parameters: {
+                query?: {
+                    environment?: string;
+                    /** @description RFC 3339 timestamp */
+                    since?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    system: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ControllerHistoryList"];
                     };
                 };
                 /** @description Error */
@@ -379,10 +581,110 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/systems/{system}/views": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Views of the system with template validity. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    system: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DeploygridViewList"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MuxError"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/systems/{system}/views/{view}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Render a view for an environment; the response carries the view's content type. */
+        get: {
+            parameters: {
+                query?: {
+                    environment?: string;
+                };
+                header?: never;
+                path: {
+                    system: string;
+                    view: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": string;
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MuxError"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ControllerHistoryList: {
+            items?: components["schemas"]["HistoryChange"][] | null;
+        };
         DeploygridArtifact: {
             cluster?: string;
             environment?: string;
@@ -413,6 +715,19 @@ export interface components {
             display_name?: string;
             kind?: string;
             name?: string;
+        };
+        DeploygridConfigurationInfo: {
+            environments?: string[] | null;
+            name?: string;
+            system_wide?: boolean;
+        };
+        DeploygridConfigurationList: {
+            items?: components["schemas"]["DeploygridConfigurationInfo"][] | null;
+        };
+        DeploygridConfigurationValues: {
+            environment?: string;
+            name?: string;
+            values?: unknown;
         };
         DeploygridEnvironment: {
             display_name?: string;
@@ -484,6 +799,30 @@ export interface components {
             kind?: string;
             name?: string;
             value?: string;
+        };
+        DeploygridViewInfo: {
+            configuration?: string;
+            content_type?: string;
+            display_name?: string;
+            error?: string;
+            name?: string;
+            valid?: boolean;
+        };
+        DeploygridViewList: {
+            items?: components["schemas"]["DeploygridViewInfo"][] | null;
+        };
+        HistoryChange: {
+            cluster?: string;
+            component?: string;
+            desired?: string;
+            environment?: string;
+            from?: string;
+            health?: string;
+            namespace?: string;
+            /** Format: date-time */
+            observed_at?: string;
+            system?: string;
+            to?: string;
         };
         MuxError: {
             error?: string;

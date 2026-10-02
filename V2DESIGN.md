@@ -415,9 +415,29 @@ collectors) and Helm release Secrets as a source (the `helm.sh/chart` label
 already carries the chart version; decoding release Secrets needs cluster-wide
 Secret access, which the collector role deliberately does not have).
 
-**Phase 3 — configurations, history, UI (next).**
-Configuration merge and ConfigurationView rendering endpoints; history ring +
-Events; component detail page; system switcher; drift filter.
+**Phase 3 — configurations, history, UI (done, 2026-10-01).**
+`pkg/configuration` deep-merges a system-wide `Configuration` with the
+environment document of the same logical name (`<name>` and
+`<name>-<env>`) and renders `ConfigurationView` templates with a small
+function set (`default`, `upper`, `join`, `toYaml`, `toJson`, `indent`,
+...) over `.Values`, `.Components` (the environment's rows) and `.Grid`.
+A view names the configuration it renders (`spec.configuration`, default:
+its own name). Endpoints: `/configurations`, `/configurations/{name}
+?environment=`, `/views`, `/views/{view}?environment=`. The reconciler
+validates every view template and records `TemplateValid` on its status.
+
+History: `pkg/history` keeps a bounded ring of version changes per cell,
+diffed by the single reconciler loop every 15 s (with a 45 s warm-up after
+start so cells appearing while watches sync are seeded, not reported).
+Each change is also recorded as a Kubernetes Event (`VersionChanged`) on
+the Component, which is the durable record (`kubectl describe component`).
+Endpoints: `/systems/{s}/history` and `/components/{c}/history` with
+`?environment=&since=&limit=`.
+
+UI: component detail page (hash route `#/systems/{s}/components/{c}`) with
+one card per environment (version, desired, health, cluster, hosts, links,
+artifacts) and the recent-change list; an "only drifted, inconsistent or
+degraded" filter on the grid.
 
 ---
 
@@ -429,7 +449,9 @@ Events; component detail page; system switcher; drift filter.
 2. **Cell per cluster or per environment.** When one environment spans two
    clusters, show one cell marked *inconsistent* (proposed) or one sub-column
    per cluster?
-3. **History storage.** Events only, or SQLite behind a PVC from the start?
-   Proposed: Events first.
+3. **History storage.** *Decided 2026-10-01:* Events first. Version changes
+   are kept in an in-memory ring per cell and recorded as Kubernetes Events
+   on the Component; a durable store is added only if the Event TTL proves
+   too short in practice.
 4. **UI composition.** *Decided 2026-10-01:* keep the separate nginx UI
    container and proxy `/api` through it; do not embed the UI in the Go binary.

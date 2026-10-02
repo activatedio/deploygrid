@@ -14,6 +14,10 @@ import (
 // HandleError maps it to 404.
 var ErrNotFound = errors.New("not found")
 
+// ErrBadRequest marks client errors (invalid parameters, template execution
+// failures); HandleError maps it to 400.
+var ErrBadRequest = errors.New("bad request")
+
 // WriteError writes a JSON error with the given status.
 func WriteError(w http.ResponseWriter, status int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
@@ -23,9 +27,12 @@ func WriteError(w http.ResponseWriter, status int, msg string) {
 
 func HandleError(w http.ResponseWriter, r *http.Request, err error) {
 	status := http.StatusInternalServerError
-	if errors.Is(err, ErrNotFound) {
+	switch {
+	case errors.Is(err, ErrNotFound):
 		status = http.StatusNotFound
-	} else {
+	case errors.Is(err, ErrBadRequest):
+		status = http.StatusBadRequest
+	default:
 		log.Error().Err(err).Str("path", r.URL.Path).Msg("request failed")
 	}
 	w.Header().Set("Content-Type", "application/json")

@@ -53,6 +53,11 @@ spec:
           spec:
             description: ConfigurationViewSpec defines the desired state of ConfigurationView.
             properties:
+              configuration:
+                description: |-
+                  Configuration is the name of the Configuration rendered by this view.
+                  Defaults to the view's own name.
+                type: string
               contentType:
                 default: text/plain
                 description: ContentType of the rendered output.
@@ -67,8 +72,11 @@ spec:
               template:
                 description: |-
                   Template is a Go text/template. The context exposes .System,
-                  .Environment, .Values (the merged Configuration) and .Components (the
-                  grid cells for the environment).
+                  .Environment, .Values (the merged Configuration), .Components (the
+                  grid rows for the environment, each with .Name, .DisplayName,
+                  .Version, .DesiredVersion, .Health, .Cluster, .Namespace and .Hosts)
+                  and .Grid (the whole grid). Functions: default, upper, lower, title,
+                  trim, replace, join, split, quote, indent, nindent, toYaml, toJson.
                 minLength: 1
                 type: string
             required:

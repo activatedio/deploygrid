@@ -33,6 +33,8 @@ type Controllers struct {
 	// Secrets is scoped to the control namespace; it backs collector tokens.
 	Secrets      corecontroller.SecretController
 	SecretsCache corecontroller.SecretCache
+	// Events records version changes on Components.
+	Events corecontroller.EventController
 
 	Systems                 deploygridcontroller.SystemController
 	SystemsCache            deploygridcontroller.SystemCache
@@ -73,6 +75,7 @@ func NewControllers(cfg *config.ControlConfig, lifecycle fx.Lifecycle) (*Control
 	})
 
 	secrets := appCtx.Core.Secret()
+	events := appCtx.Core.Event()
 	systems := appCtx.DG.System()
 	components := appCtx.DG.Component()
 	clusters := appCtx.DG.Cluster()
@@ -82,6 +85,7 @@ func NewControllers(cfg *config.ControlConfig, lifecycle fx.Lifecycle) (*Control
 	return &Controllers{
 		Secrets:                 secrets,
 		SecretsCache:            secrets.Cache(),
+		Events:                  events,
 		Systems:                 systems,
 		SystemsCache:            systems.Cache(),
 		Components:              components,

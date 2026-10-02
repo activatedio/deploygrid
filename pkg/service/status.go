@@ -1,11 +1,12 @@
 package service
 
 import (
-	"context"
+	"fmt"
 	"time"
 
 	"github.com/rs/zerolog/log"
 	"go.uber.org/fx"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -14,61 +15,145 @@ import (
 
 	"github.com/activatedio/deploygrid/pkg/apis/deploygrid.activated.io/v1alpha1"
 	"github.com/activatedio/deploygrid/pkg/config"
+	"github.com/activatedio/deploygrid/pkg/configuration"
 	"github.com/activatedio/deploygrid/pkg/grid"
+	"github.com/activatedio/deploygrid/pkg/history"
 	"github.com/activatedio/deploygrid/pkg/repository/k8s"
 )
 
-// StatusWriter periodically persists the grid cells of declared Components
-// into Component.status and a summary into System.status, so the grid is
-// visible through kubectl and consumable by other controllers.
+// StatusWriter persists the grid cells of declared Components into
+// Component.status, a summary into System.status, connectivity into
+// Cluster.status and template validity into ConfigurationView.status, and
+// records version changes as Events on the Component. It is driven by the
+// Reconciler.
 type StatusWriter struct {
-	grids       GridService
 	registry    *SourceRegistry
+	catalog     Catalog
 	controllers *k8s.Controllers
 	namespace   string
-	interval    time.Duration
 	// staleAfter is how long without a heartbeat before a pushed cluster is
 	// reported as disconnected.
 	staleAfter time.Duration
-	cancel     context.CancelFunc
 }
 
 // ConditionConnected is set on Cluster resources.
 const ConditionConnected = "Connected"
 
-func (w *StatusWriter) run(ctx context.Context) {
-	t := time.NewTicker(w.interval)
-	defer t.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-t.C:
-			if err := w.Sync(ctx); err != nil {
-				log.Error().Err(err).Msg("status sync failed")
-			}
-		}
-	}
-}
+// ConditionTemplateValid is set on ConfigurationView resources.
+const ConditionTemplateValid = "TemplateValid"
 
-// Sync writes one round of status updates.
-func (w *StatusWriter) Sync(ctx context.Context) error {
+// Prepare runs before the grids are built in a pass.
+func (w *StatusWriter) Prepare() {
 	if err := EnsureTokenSecrets(w.controllers, w.namespace); err != nil {
 		log.Error().Err(err).Msg("ensure collector tokens")
 	}
-	results, err := w.grids.BuildAll(ctx)
-	if err != nil {
-		return err
+}
+
+// Apply records one System's results.
+func (w *StatusWriter) Apply(systemName string, res *grid.Result, changes []history.Change, now time.Time) {
+	ts := metav1.NewTime(now)
+	w.syncSystem(systemName, res, ts)
+	for name, statuses := range res.Statuses {
+		w.syncComponent(name, statuses, ts)
 	}
-	now := metav1.NewTime(time.Now())
-	for systemName, res := range results {
-		w.syncSystem(systemName, res, now)
-		for name, statuses := range res.Statuses {
-			w.syncComponent(name, statuses, now)
+	for _, ch := range changes {
+		w.recordEvent(ch)
+	}
+}
+
+// Finish runs after every System was applied.
+func (w *StatusWriter) Finish() {
+	w.syncClusters(metav1.NewTime(time.Now()))
+	w.syncViews()
+}
+
+// recordEvent emits a Kubernetes Event on the Component for a version
+// change. Discovered components have no resource to attach to and are
+// skipped.
+func (w *StatusWriter) recordEvent(ch history.Change) {
+	comp, err := w.controllers.ComponentsCache.Get(w.namespace, ch.Component)
+	if err != nil {
+		return
+	}
+	var message string
+	switch ch.Kind() {
+	case "appeared":
+		message = fmt.Sprintf("%s: %s deployed", ch.Environment, ch.To)
+	case "disappeared":
+		message = fmt.Sprintf("%s: %s no longer observed", ch.Environment, ch.From)
+	default:
+		message = fmt.Sprintf("%s: %s -> %s", ch.Environment, ch.From, ch.To)
+	}
+	if ch.Cluster != "" {
+		message += fmt.Sprintf(" (cluster %s", ch.Cluster)
+		if ch.Namespace != "" {
+			message += ", namespace " + ch.Namespace
+		}
+		message += ")"
+	}
+	ts := metav1.NewTime(ch.ObservedAt)
+	ev := &corev1.Event{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: comp.Name + ".",
+			Namespace:    w.namespace,
+			Labels: map[string]string{
+				grid.LabelSystem:      ch.System,
+				grid.LabelComponent:   ch.Component,
+				grid.LabelEnvironment: ch.Environment,
+			},
+		},
+		InvolvedObject: corev1.ObjectReference{
+			APIVersion:      v1alpha1.SchemeGroupVersion.String(),
+			Kind:            "Component",
+			Namespace:       comp.Namespace,
+			Name:            comp.Name,
+			UID:             comp.UID,
+			ResourceVersion: comp.ResourceVersion,
+		},
+		Reason:              "VersionChanged",
+		Message:             message,
+		Type:                corev1.EventTypeNormal,
+		Source:              corev1.EventSource{Component: "deploygrid"},
+		FirstTimestamp:      ts,
+		LastTimestamp:       ts,
+		Count:               1,
+		ReportingController: "deploygrid.activated.io/server",
+		ReportingInstance:   "deploygrid",
+	}
+	if _, err := w.controllers.Events.Create(ev); err != nil {
+		log.Error().Err(err).Str("component", ch.Component).Msg("record event")
+	}
+}
+
+// syncViews validates every ConfigurationView template and records the
+// result as a condition.
+func (w *StatusWriter) syncViews() {
+	views, err := w.catalog.ConfigurationViews()
+	if err != nil {
+		log.Error().Err(err).Msg("list views")
+		return
+	}
+	for _, v := range views {
+		cond := metav1.Condition{Type: ConditionTemplateValid, ObservedGeneration: v.Generation}
+		if _, err := configuration.Parse(v); err != nil {
+			cond.Status = metav1.ConditionFalse
+			cond.Reason = "ParseError"
+			cond.Message = err.Error()
+		} else {
+			cond.Status = metav1.ConditionTrue
+			cond.Reason = "Parsed"
+			cond.Message = "template parses"
+		}
+		updated := v.DeepCopy()
+		meta.SetStatusCondition(&updated.Status.Conditions, cond)
+		updated.Status.ObservedGeneration = v.Generation
+		if equality.Semantic.DeepEqual(updated.Status, v.Status) {
+			continue
+		}
+		if _, err := w.controllers.ConfigurationViews.UpdateStatus(updated); err != nil {
+			log.Error().Err(err).Str("view", v.Name).Msg("update view status")
 		}
 	}
-	w.syncClusters(now)
-	return nil
 }
 
 // syncClusters records connectivity on every Cluster resource: pushed
@@ -216,40 +301,18 @@ func (w *StatusWriter) syncComponent(name string, cur []v1alpha1.ComponentEnviro
 
 type StatusWriterParams struct {
 	fx.In
-	Grids       GridService
 	Registry    *SourceRegistry
+	Catalog     Catalog
 	Controllers *k8s.Controllers
 	Control     *config.ControlConfig
-	Lifecycle   fx.Lifecycle
 }
 
-// NewStatusWriter starts the writer with the application lifecycle.
 func NewStatusWriter(params StatusWriterParams) *StatusWriter {
-	w := &StatusWriter{
-		grids:       params.Grids,
+	return &StatusWriter{
 		registry:    params.Registry,
+		catalog:     params.Catalog,
 		controllers: params.Controllers,
 		namespace:   params.Control.Namespace,
-		interval:    15 * time.Second,
 		staleAfter:  2 * time.Minute,
 	}
-	params.Lifecycle.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			// Tokens must exist before the first collector tries to connect.
-			if err := EnsureTokenSecrets(w.controllers, w.namespace); err != nil {
-				log.Error().Err(err).Msg("ensure collector tokens")
-			}
-			runCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
-			w.cancel = cancel
-			go w.run(runCtx)
-			return nil
-		},
-		OnStop: func(_ context.Context) error {
-			if w.cancel != nil {
-				w.cancel()
-			}
-			return nil
-		},
-	})
-	return w
 }

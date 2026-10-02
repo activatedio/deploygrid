@@ -109,6 +109,7 @@ metadata:
   namespace: deploygrid
 spec:
   system: apps
+  configuration: endpoints
   contentType: text/plain
   template: |
     {{- range .Components }}

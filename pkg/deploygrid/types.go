@@ -108,3 +108,38 @@ type ArtifactList struct {
 type GridRowList struct {
 	Items []*GridRow `json:"items"`
 }
+
+// ConfigurationInfo summarises one configuration name of a system.
+type ConfigurationInfo struct {
+	Name string `json:"name"`
+	// SystemWide is true when a document without an environment exists.
+	SystemWide bool `json:"system_wide"`
+	// Environments that override the system-wide document.
+	Environments []string `json:"environments"`
+}
+
+type ConfigurationList struct {
+	Items []*ConfigurationInfo `json:"items"`
+}
+
+// ConfigurationValues is a merged configuration document.
+type ConfigurationValues struct {
+	Name        string `json:"name"`
+	Environment string `json:"environment,omitempty"`
+	Values      any    `json:"values"`
+}
+
+// ViewInfo summarises a ConfigurationView.
+type ViewInfo struct {
+	Name          string `json:"name"`
+	DisplayName   string `json:"display_name,omitempty"`
+	Configuration string `json:"configuration"`
+	ContentType   string `json:"content_type"`
+	// Valid is false when the template does not parse; Error says why.
+	Valid bool   `json:"valid"`
+	Error string `json:"error,omitempty"`
+}
+
+type ViewList struct {
+	Items []*ViewInfo `json:"items"`
+}

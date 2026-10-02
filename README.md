@@ -26,7 +26,8 @@ desired version, drift, health, cluster, namespace, hosts and links.
   destinations resolve), the environment its namespaces map to, and how it is
   observed.
 * **Configuration / ConfigurationView** – named values per system or
-  environment and templates that render them (phase 3).
+  environment, deep-merged, and templates that render them together with the
+  grid (for example a hosts file or a values file per environment).
 
 The full design, conventions and roadmap are in [V2DESIGN.md](V2DESIGN.md).
 
@@ -75,8 +76,14 @@ migration warning on the grid.
 GET  /api/systems                                   GET /api/systems/{s}
 GET  /api/systems/{s}/grid                          GET /api/systems/{s}/components
 GET  /api/systems/{s}/components/{c}                GET /api/systems/{s}/unassigned
+GET  /api/systems/{s}/history                       GET /api/systems/{s}/components/{c}/history
+GET  /api/systems/{s}/configurations                GET /api/systems/{s}/configurations/{name}?environment=
+GET  /api/systems/{s}/views                         GET /api/systems/{s}/views/{view}?environment=
 POST /api/observations        (collectors, bearer token)
 GET  /swagger.json
+
+Version changes are kept in memory for the API and recorded as Kubernetes
+Events on the Component (`kubectl describe component <name>`).
 ```
 
 ## Development

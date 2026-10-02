@@ -75,13 +75,20 @@ type ConfigurationViewSpec struct {
 	System string `json:"system"`
 	// +optional
 	DisplayName string `json:"displayName,omitempty"`
+	// Configuration is the name of the Configuration rendered by this view.
+	// Defaults to the view's own name.
+	// +optional
+	Configuration string `json:"configuration,omitempty"`
 	// ContentType of the rendered output.
 	// +kubebuilder:default="text/plain"
 	// +optional
 	ContentType string `json:"contentType,omitempty"`
 	// Template is a Go text/template. The context exposes .System,
-	// .Environment, .Values (the merged Configuration) and .Components (the
-	// grid cells for the environment).
+	// .Environment, .Values (the merged Configuration), .Components (the
+	// grid rows for the environment, each with .Name, .DisplayName,
+	// .Version, .DesiredVersion, .Health, .Cluster, .Namespace and .Hosts)
+	// and .Grid (the whole grid). Functions: default, upper, lower, title,
+	// trim, replace, join, split, quote, indent, nindent, toYaml, toJson.
 	// +kubebuilder:validation:MinLength=1
 	Template string `json:"template"`
 }

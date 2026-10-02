@@ -25,6 +25,10 @@ rules:
   - apiGroups: ['']
     resources: ['secrets']
     verbs: ['get', 'watch', 'list', 'create', 'update', 'patch']
+  # Version changes are recorded as Events on Components.
+  - apiGroups: ['']
+    resources: ['events']
+    verbs: ['get', 'watch', 'list', 'create', 'patch']
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

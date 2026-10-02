@@ -99,6 +99,45 @@ func TestE2E(t *testing.T) {
 			require.NoError(c, err)
 			require.Equal(c, 404, resp.StatusCode())
 
+			// configurations: the qa document deep-merges over the system-wide one
+			cl := &deploygrid.ConfigurationList{}
+			resp, err = json(r.R()).SetError(e).SetResult(cl).Get("/api/systems/apps/configurations")
+			require.NoError(c, err)
+			require.True(c, resp.IsSuccess(), resp.String())
+			require.Len(c, cl.Items, 1)
+			require.Equal(c, "endpoints", cl.Items[0].Name)
+			require.Equal(c, []string{"qa"}, cl.Items[0].Environments)
+
+			cv := &deploygrid.ConfigurationValues{}
+			resp, err = json(r.R()).SetError(e).SetResult(cv).Get("/api/systems/apps/configurations/endpoints?environment=qa")
+			require.NoError(c, err)
+			require.True(c, resp.IsSuccess(), resp.String())
+			require.Equal(c, map[string]any{"domain": "qa.example.com"}, cv.Values)
+
+			// views render with the grid of the environment
+			vl := &deploygrid.ViewList{}
+			resp, err = json(r.R()).SetError(e).SetResult(vl).Get("/api/systems/apps/views")
+			require.NoError(c, err)
+			require.True(c, resp.IsSuccess(), resp.String())
+			require.Len(c, vl.Items, 1)
+			require.True(c, vl.Items[0].Valid)
+
+			resp, err = r.R().Get("/api/systems/apps/views/hosts?environment=dev")
+			require.NoError(c, err)
+			require.True(c, resp.IsSuccess(), resp.String())
+			require.Equal(c, "text/plain", resp.Header().Get("Content-Type"))
+			require.Contains(c, resp.String(), "app-a.example.com -> 1.16.1")
+
+			// history is empty until something changes, but the endpoint works
+			hl := map[string]any{}
+			resp, err = json(r.R()).SetError(e).SetResult(&hl).Get("/api/systems/apps/components/app-a/history")
+			require.NoError(c, err)
+			require.True(c, resp.IsSuccess(), resp.String())
+			require.Contains(c, hl, "items")
+			resp, err = json(r.R()).SetError(e).Get("/api/systems/apps/history?since=garbage")
+			require.NoError(c, err)
+			require.Equal(c, 400, resp.StatusCode())
+
 			log.Info().Msg("test succeeded")
 
 		}, 20*time.Second, time.Second)
