@@ -225,6 +225,9 @@ func (c *Collector) observation(batches []batch) *deploygrid.Observation {
 	return obs
 }
 
+// send is the collector's only network call: POST <server>/observations.
+// Operators front it with gateways that allow exactly that path and method,
+// so any new traffic must stay on this route.
 func (c *Collector) send(ctx context.Context, obs *deploygrid.Observation) (*deploygrid.ObservationResponse, error) {
 	body, err := json.Marshal(obs)
 	if err != nil {

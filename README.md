@@ -52,6 +52,11 @@ service account workload identity (the pod's Application Default
 Credentials become the bearer token, no plugin involved). This is the right
 choice when the observed cluster cannot reach the server.
 
+The collector's only network call is `POST <server.url>/observations`
+(snapshots, deltas, heartbeats and resyncs all go through it, and the
+server's answer rides on the response), so an ingest gateway can allow exactly
+that path and method and nothing else.
+
 For an agent-mode `Cluster` the server generates a token Secret named
 `<cluster>-collector-token` in its namespace. Pass that token to the collector
 chart:
