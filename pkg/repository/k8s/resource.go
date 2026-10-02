@@ -117,24 +117,31 @@ func (c *resourceStoreAdapter) handleSingle(obj any, handler func(res *repositor
 	return errors.New("type is not unstructured")
 }
 
-func (c *resourceStoreAdapter) Add(obj interface{}) error {
-	log.Info().Interface("adding", obj).Msgf("Adding object")
-	return c.handleSingle(obj, c.store.Add)
+// objectKey names an object for logs without dumping it.
+func objectKey(obj interface{}) string {
+	if u, ok := obj.(*unstructured.Unstructured); ok {
+		return u.GetKind() + " " + u.GetNamespace() + "/" + u.GetName()
+	}
+	return "?"
+}
 
+func (c *resourceStoreAdapter) Add(obj interface{}) error {
+	log.Debug().Str("object", objectKey(obj)).Msg("adding object")
+	return c.handleSingle(obj, c.store.Add)
 }
 
 func (c *resourceStoreAdapter) Update(obj interface{}) error {
-	log.Info().Interface("updating", obj).Msgf("Updating object")
+	log.Debug().Str("object", objectKey(obj)).Msg("updating object")
 	return c.handleSingle(obj, c.store.Modify)
 }
 
 func (c *resourceStoreAdapter) Delete(obj interface{}) error {
-	log.Info().Interface("deleting", obj).Msgf("Deleting object")
+	log.Debug().Str("object", objectKey(obj)).Msg("deleting object")
 	return c.handleSingle(obj, c.store.Delete)
 }
 
 func (c *resourceStoreAdapter) Replace(i []interface{}, _ string) error {
-	log.Info().Interface("replace", i).Msgf("Replace")
+	log.Debug().Int("objects", len(i)).Msg("replacing objects")
 
 	var res []*repository.Resource
 
@@ -154,7 +161,7 @@ func (c *resourceStoreAdapter) Replace(i []interface{}, _ string) error {
 }
 
 func (c *resourceStoreAdapter) Resync() error {
-	log.Info().Msgf("Resync")
+	log.Debug().Msg("resync")
 	return nil
 }
 
