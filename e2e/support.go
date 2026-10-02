@@ -130,7 +130,7 @@ func getComponent(t *testing.T, kubeconfig, namespace, name string) *v1alpha1.Co
 
 // startCollector runs an in-process collector against the given cluster for
 // the duration of the test.
-func startCollector(t *testing.T, server, cluster, token, kubeconfig string) {
+func startCollector(t *testing.T, server, cluster, token, kubeconfig string, sources *config.SourcesConfig) {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
@@ -142,7 +142,7 @@ func startCollector(t *testing.T, server, cluster, token, kubeconfig string) {
 			KubeConfigPath:   kubeconfig,
 			FlushSeconds:     1,
 			HeartbeatSeconds: 5,
-		})
+		}, sources)
 		if err != nil {
 			log.Error().Err(err).Msg("collector stopped")
 		}

@@ -24,6 +24,7 @@ type resourceRepositoryClusterAwareAccessor struct {
 	clusterNames []string
 	clusters     map[string]cluster
 	repositories map[string]*repository.Resources
+	kinds        []config.ApplicationKindConfig
 	lock         sync.Mutex
 }
 
@@ -75,7 +76,7 @@ func (c *resourceRepositoryClusterAwareAccessor) Get(_ context.Context, clusterN
 			return nil, err
 		}
 
-		return NewResources(client), nil
+		return NewResources(client, c.kinds), nil
 	})
 
 	if err != nil {
@@ -90,6 +91,7 @@ func (c *resourceRepositoryClusterAwareAccessor) Get(_ context.Context, clusterN
 type ResourceRepositoryClusterAwareAccessorParams struct {
 	fx.In
 	ClustersConfig *config.ClustersConfig
+	Sources        *config.SourcesConfig
 }
 
 func NewResourceRepositoryClusterAwareAccessor(params ResourceRepositoryClusterAwareAccessorParams) repository.ClusterAwareAccessor[*repository.Resources] {
@@ -116,5 +118,6 @@ func NewResourceRepositoryClusterAwareAccessor(params ResourceRepositoryClusterA
 		clusterNames: clusterNames,
 		clusters:     clusters,
 		repositories: map[string]*repository.Resources{},
+		kinds:        params.Sources.ApplicationKinds,
 	}
 }

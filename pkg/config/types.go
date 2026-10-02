@@ -18,6 +18,51 @@ type Main struct {
 	Clusters ClustersConfig `description:"Observed clusters"`
 	// Collector is only used by the `deploygrid collector` command.
 	Collector CollectorConfig `description:"Collector settings"`
+	// Sources configures what is observed beyond the built-in Argo CD
+	// Applications, Deployments and Ingresses. Used by server-side watches
+	// and by collectors.
+	Sources SourcesConfig `description:"Additional observed resources"`
+}
+
+// SourcesConfig lists extra observed resource kinds.
+type SourcesConfig struct {
+	// ApplicationKinds are custom resources that represent an application
+	// installed by an operator, for example platform.ritesuite.com
+	// RiteSuite. Workloads that carry a controller ownerReference to such a
+	// resource are grouped under it.
+	ApplicationKinds []ApplicationKindConfig `description:"Operator application custom resources"`
+}
+
+// ApplicationKindConfig describes one operator application kind. Paths are
+// Kubernetes JSONPath expressions evaluated against the custom resource,
+// with or without the surrounding braces.
+type ApplicationKindConfig struct {
+	Group    string `description:"API group, e.g. platform.ritesuite.com"`
+	Version  string `description:"API version, e.g. v1alpha1"`
+	Resource string `description:"Plural resource, e.g. ritesuites"`
+	Kind     string `description:"Kind, as it appears in ownerReferences, e.g. RiteSuite"`
+	// Component is the grid row every instance of this kind maps to. When
+	// empty, the app.kubernetes.io/name label or the resource name is used.
+	Component string `description:"Component (row) for all instances; defaults to the app.kubernetes.io/name label or the resource name"`
+	// DesiredVersionPath reads the version the resource asks for. Defaults
+	// to {.spec.version}.
+	DesiredVersionPath string `description:"JSONPath of the desired version (default {.spec.version})"`
+	// RunningVersionPath reads what the operator reports as running, either
+	// a version or one or more image references whose tags are used. When
+	// empty, the owned workloads decide.
+	RunningVersionPath string `description:"JSONPath of the running version or images (optional)"`
+	// EnvironmentPath reads the environment from the resource; otherwise
+	// labels, Cluster namespace rules and the cluster default apply.
+	EnvironmentPath string `description:"JSONPath of the environment (optional)"`
+	// HealthConditionType is the status condition that means healthy.
+	// Defaults to Ready. A Degraded=True or <type>=False condition means
+	// degraded; Progressing=True means progressing.
+	HealthConditionType string `description:"Condition type meaning healthy (default Ready)"`
+}
+
+// Key names the store kind for resources of this application kind.
+func (a ApplicationKindConfig) Key() string {
+	return "application/" + a.Group + "/" + a.Resource
 }
 
 type LoggingConfig struct {

@@ -45,6 +45,10 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args: ["collector"]
           env:
+            {{- if .Values.sources.applicationKinds }}
+            - name: CONFIG_PATH
+              value: /etc/deploygrid/config.yaml
+            {{- end }}
             - name: DEPLOYGRID_COLLECTOR_SERVER
               value: {{ .Values.server.url | quote }}
             - name: DEPLOYGRID_COLLECTOR_CLUSTER
@@ -61,12 +65,23 @@ spec:
             - name: token
               mountPath: /etc/deploygrid/token
               readOnly: true
+            {{- if .Values.sources.applicationKinds }}
+            - name: config
+              mountPath: /etc/deploygrid/config.yaml
+              subPath: config.yaml
+              readOnly: true
+            {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
         - name: token
           secret:
             secretName: {{ include "deploygrid-collector.tokenSecretName" . }}
+        {{- if .Values.sources.applicationKinds }}
+        - name: config
+          configMap:
+            name: {{ include "deploygrid-collector.fullname" . }}
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

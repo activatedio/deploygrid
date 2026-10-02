@@ -21,15 +21,19 @@ import (
 )
 
 // ComponentKind classifies what a Component's version refers to.
-// +kubebuilder:validation:Enum=helm-chart;container;argocd-application;service;custom
+// +kubebuilder:validation:Enum=helm-chart;container;argocd-application;operator-application;service;custom
 type ComponentKind string
 
 const (
 	ComponentKindHelmChart         ComponentKind = "helm-chart"
 	ComponentKindContainer         ComponentKind = "container"
 	ComponentKindArgoCDApplication ComponentKind = "argocd-application"
-	ComponentKindService           ComponentKind = "service"
-	ComponentKindCustom            ComponentKind = "custom"
+	// ComponentKindOperatorApplication is an application installed by an
+	// operator from a custom resource; the version is what the operator
+	// reports as running, else what its owned workloads run.
+	ComponentKindOperatorApplication ComponentKind = "operator-application"
+	ComponentKindService             ComponentKind = "service"
+	ComponentKindCustom              ComponentKind = "custom"
 )
 
 // ComponentSelector describes how observed resources are matched to this

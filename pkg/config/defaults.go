@@ -23,5 +23,6 @@ func Defaults() *Main {
 			FlushSeconds:     2,
 			HeartbeatSeconds: 30,
 		},
+		Sources: SourcesConfig{},
 	}
 }

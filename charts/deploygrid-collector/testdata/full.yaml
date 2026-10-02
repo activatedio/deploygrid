@@ -5,3 +5,11 @@ cluster:
 token: example-token
 image:
   tag: v0.1.0
+sources:
+  applicationKinds:
+    - group: platform.ritesuite.com
+      version: v1alpha1
+      resource: ritesuites
+      kind: RiteSuite
+      component: ritesuite
+      runningVersionPath: "{.status.components[*].image}"

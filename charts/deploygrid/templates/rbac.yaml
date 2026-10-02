@@ -10,6 +10,11 @@ rules:
   - apiGroups: ['', 'apps', 'networking.k8s.io', 'argoproj.io']
     resources: ['namespaces', 'deployments', 'statefulsets', 'daemonsets', 'ingresses', 'applications']
     verbs: ['get', 'watch', 'list']
+  {{- range .Values.sources.applicationKinds }}
+  - apiGroups: [{{ .group | quote }}]
+    resources: [{{ .resource | quote }}]
+    verbs: ['get', 'watch', 'list']
+  {{- end }}
   # deploygrid custom resources, including status updates.
   - apiGroups: ['deploygrid.activated.io']
     resources: ['*']

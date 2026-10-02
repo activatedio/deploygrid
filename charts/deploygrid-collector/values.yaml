@@ -18,6 +18,11 @@ existingSecret:
   name: ""
   key: token
 
+# Operator-installed applications to observe on this cluster; see the
+# deploygrid chart's sources.applicationKinds for the shape.
+sources:
+  applicationKinds: []
+
 # Seconds to coalesce changes before pushing, and heartbeat interval.
 flushSeconds: 2
 heartbeatSeconds: 30

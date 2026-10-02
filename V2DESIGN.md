@@ -142,6 +142,7 @@ it in memory (the existing `Store`), and writes only the *summary* into
 | `helm-chart` | Helm release Secret chart version, else `helm.sh/chart` label | Argo CD `source.targetRevision` |
 | `container` | image tag, else short digest (`ParseImageReference`) | Argo CD rendered manifest (phase 3) |
 | `argocd-application` | `status.sync.revision` | `spec.source.targetRevision` |
+| `operator-application` | `runningVersionPath` on the CR (image tags must agree), else owned workloads' image tags when they agree, else their `app.kubernetes.io/version` label | `desiredVersionPath` on the CR (default `.spec.version`) |
 
 A cell is **drifted** when desired is known and differs from actual, and
 **inconsistent** when the same component reports two actual versions in one
@@ -229,7 +230,13 @@ Sources, in order of delivery:
 1. `apps/v1` Deployments, StatefulSets, DaemonSets (containers → versions, conditions → health).
 2. `networking.k8s.io/v1` Ingresses (hosts, matched to workloads via Service selectors).
 3. Argo CD Applications (desired version, destination, health).
-4. Helm release Secrets (`type: helm.sh/release.v1`; chart name/version without Argo CD).
+4. Operator application custom resources (`sources.applicationKinds`, added
+   2026-10-02): any GVR, with JSONPaths for desired/running version and
+   environment and a health condition type. Workloads link to the CR
+   through controller `ownerReferences`, so the same mechanism serves any
+   controller-runtime operator; the first one is RiteSuite
+   (`platform.ritesuite.com/v1alpha1`).
+5. Helm release Secrets (`type: helm.sh/release.v1`; chart name/version without Argo CD) — deferred, see §8.
 
 ### 4.2 Server pipeline
 

@@ -22,3 +22,13 @@ clusters:
     - name: kind-app-cluster-2
       mode: agent
 
+sources:
+  # operator-installed applications: one row per kind, instances mapped to
+  # environments through the Cluster namespace rules
+  applicationKinds:
+    - group: platform.ritesuite.com
+      version: v1alpha1
+      resource: ritesuites
+      kind: RiteSuite
+      component: ritesuite
+      runningVersionPath: "{.status.components[*].image}"

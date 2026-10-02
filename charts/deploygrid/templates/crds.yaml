@@ -311,6 +311,7 @@ spec:
                     - helm-chart
                     - container
                     - argocd-application
+                    - operator-application
                     - service
                     - custom
                   type: string

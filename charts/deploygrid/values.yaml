@@ -34,6 +34,21 @@ ui:
 clusters: []
 environments: []
 
+# Operator-installed applications to observe (server-side watches in modes
+# kubeconfig/local). Each entry is a custom resource kind; workloads owning
+# a controller ownerReference to an instance are grouped under it.
+#
+# sources:
+#   applicationKinds:
+#     - group: platform.ritesuite.com
+#       version: v1alpha1
+#       resource: ritesuites
+#       kind: RiteSuite
+#       component: ritesuite
+#       runningVersionPath: "{.status.components[*].image}"
+sources:
+  applicationKinds: []
+
 # Custom resource definitions for System, Component, Cluster, Configuration
 # and ConfigurationView.
 crds:

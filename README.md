@@ -60,6 +60,50 @@ helm install deploygrid-collector charts/deploygrid-collector \
   --set cluster.name=prod-east --set token=$TOKEN
 ```
 
+## Operator-installed applications
+
+Applications installed by an operator from a custom resource (for example a
+`RiteSuite`) are observed by declaring the kind in `sources.applicationKinds`
+on the server and on each collector:
+
+```yaml
+sources:
+  applicationKinds:
+    - group: platform.ritesuite.com
+      version: v1alpha1
+      resource: ritesuites
+      kind: RiteSuite                                 # as in ownerReferences
+      component: ritesuite                            # the row every instance maps to
+      desiredVersionPath: "{.spec.version}"           # default
+      runningVersionPath: "{.status.components[*].image}"  # optional
+      healthConditionType: Ready                      # default
+```
+
+How it works, and therefore what an operator must do for this to apply:
+
+* **Identity.** One row per kind (`component`), or per
+  `app.kubernetes.io/name` label / resource name when `component` is empty.
+  Labels on the custom resource (`deploygrid.activated.io/component`,
+  `/environment`) and declared `Component` selectors take precedence.
+* **Environment.** From the resource's labels, `environmentPath`, the
+  Cluster's namespace rules, or the cluster default, in that order. One
+  instance per namespace per environment is the usual layout.
+* **Workloads.** Deployments and Ingresses that carry a *controller
+  ownerReference* to the custom resource are grouped under it (that is what
+  `controller-runtime`'s `SetControllerReference` produces). Operators that
+  create workloads without owner references are not linked; label the
+  workloads with the deploygrid component instead.
+* **Version.** Desired from `desiredVersionPath`. Running from
+  `runningVersionPath` when the operator reports it (a version, or image
+  references whose tags must agree), else from the owned workloads' image
+  tags when they agree, else from their `app.kubernetes.io/version` label.
+  Workloads running different versions mark the cell inconsistent.
+* **Health.** `Degraded=True` beats everything, then `<healthConditionType>=True`
+  is healthy, `Progressing=True` is progressing, `<healthConditionType>=False`
+  is degraded, no conditions is unknown.
+
+The RBAC of both charts grows a read rule per declared kind.
+
 ## Labelling what you run
 
 Identity is read from labels (selectable), display data from annotations:

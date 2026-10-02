@@ -6,10 +6,12 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 
+	"github.com/activatedio/deploygrid/pkg/config"
 	"github.com/activatedio/deploygrid/pkg/repository"
 )
 
@@ -17,7 +19,44 @@ const (
 	labelManagedBy = "app.kubernetes.io/managed-by"
 	labelInstance  = "app.kubernetes.io/instance"
 	labelHelmChart = "helm.sh/chart"
+	labelVersion   = "app.kubernetes.io/version"
+	labelName      = "app.kubernetes.io/name"
 )
+
+// builtinOwnerKinds are controllers whose ownership says nothing about which
+// application a workload belongs to.
+var builtinOwnerKinds = map[string]bool{
+	"ReplicaSet": true, "Deployment": true, "StatefulSet": true, "DaemonSet": true,
+	"Job": true, "CronJob": true, "ReplicationController": true,
+}
+
+// parentOf derives the store key of the delivery resource managing an
+// object: a controller ownerReference to a custom resource wins, then a
+// Helm release.
+func parentOf(meta metav1.ObjectMeta) string {
+	for _, o := range meta.OwnerReferences {
+		if key := customOwner(o, meta.Namespace); key != "" {
+			return key
+		}
+	}
+	if mb, ok := meta.Labels[labelManagedBy]; ok && mb == "Helm" {
+		return ApplicationName(meta.Labels[labelInstance])
+	}
+	return ""
+}
+
+// customOwner returns the store key of a controller owner that is a custom
+// resource, or "" for built-in controllers and non-controller owners.
+func customOwner(o metav1.OwnerReference, namespace string) string {
+	if o.Controller == nil || !*o.Controller || builtinOwnerKinds[o.Kind] {
+		return ""
+	}
+	group, _, found := strings.Cut(o.APIVersion, "/")
+	if !found || group == "apps" || group == "batch" {
+		return ""
+	}
+	return repository.CustomResourceName(group, o.Kind, namespace, o.Name)
+}
 
 // argoHealth maps Argo CD health values onto the coarse health used here.
 func argoHealth(status string) string {
@@ -140,52 +179,52 @@ func NewDeploymentRepository(client dynamic.Interface) repository.ResourceReposi
 			Resource: "deployments",
 		},
 		ToResource: func(obj *unstructured.Unstructured) (*repository.Resource, error) {
-
 			dep := &appsv1.Deployment{}
-
-			err := DecodeMap(obj.Object, dep)
-
-			if err != nil {
+			if err := DecodeMap(obj.Object, dep); err != nil {
 				return nil, err
 			}
-
-			parent := ""
-
-			if mb, ok := dep.Labels[labelManagedBy]; ok && mb == "Helm" {
-				parent = ApplicationName(dep.Labels[labelInstance])
-			}
-
-			comps := make([]repository.Component, 0, len(dep.Spec.Template.Spec.Containers))
-
-			for _, c := range dep.Spec.Template.Spec.Containers {
-				comps = append(comps, repository.Component{
-					Name:    c.Name,
-					Kind:    repository.VersionKindContainer,
-					Version: ParseImageReference(c.Image).Version(),
-					Image:   c.Image,
-				})
-			}
-
-			return &repository.Resource{
-				Name:         DeploymentName(dep.Namespace, dep.Name),
-				Kind:         repository.KindDeployment,
-				Namespace:    dep.Namespace,
-				ObjectName:   dep.Name,
-				Labels:       dep.Labels,
-				Annotations:  dep.Annotations,
-				Parent:       parent,
-				Components:   comps,
-				ChartVersion: ChartVersionFromLabel(dep.Labels[labelHelmChart]),
-				Health:       deploymentHealth(dep),
-			}, nil
+			return DeploymentResource(dep), nil
 		},
 	})
 }
 
-func NewResources(client dynamic.Interface) *repository.Resources {
-	return &repository.Resources{
+// DeploymentResource converts a Deployment into an observed Resource.
+func DeploymentResource(dep *appsv1.Deployment) *repository.Resource {
+	comps := make([]repository.Component, 0, len(dep.Spec.Template.Spec.Containers))
+
+	for _, c := range dep.Spec.Template.Spec.Containers {
+		comps = append(comps, repository.Component{
+			Name:    c.Name,
+			Kind:    repository.VersionKindContainer,
+			Version: ParseImageReference(c.Image).Version(),
+			Image:   c.Image,
+		})
+	}
+
+	return &repository.Resource{
+		Name:           DeploymentName(dep.Namespace, dep.Name),
+		Kind:           repository.KindDeployment,
+		Namespace:      dep.Namespace,
+		ObjectName:     dep.Name,
+		Labels:         dep.Labels,
+		Annotations:    dep.Annotations,
+		Parent:         parentOf(dep.ObjectMeta),
+		Components:     comps,
+		ChartVersion:   ChartVersionFromLabel(dep.Labels[labelHelmChart]),
+		StampedVersion: dep.Labels[labelVersion],
+		Health:         deploymentHealth(dep),
+	}
+}
+
+func NewResources(client dynamic.Interface, kinds []config.ApplicationKindConfig) *repository.Resources {
+	res := &repository.Resources{
 		Applications: NewApplicationRepository(client),
 		Deployment:   NewDeploymentRepository(client),
 		Ingress:      NewIngressRepository(client),
+		Custom:       map[string]repository.ResourceRepository{},
 	}
+	for _, k := range kinds {
+		res.Custom[k.Key()] = NewOperatorApplicationRepository(client, k)
+	}
+	return res
 }

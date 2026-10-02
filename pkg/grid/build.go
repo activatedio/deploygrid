@@ -337,16 +337,40 @@ func (b *builder) collectApplications(cn string, claimed map[string]map[string]b
 	data := b.in.Observed[cn]
 	for _, name := range sortedKeys(data.Entries()) {
 		r := data.Entries()[name]
-		if r.Kind != repository.KindApplication {
-			continue
-		}
-		p := &placement{root: r, rootHost: cn, cluster: cn}
-		b.claimChildren(p, claimed)
-		if b.resolve(p) {
-			out = append(out, p)
+		switch {
+		case r.Kind == repository.KindApplication:
+			p := &placement{root: r, rootHost: cn, cluster: cn}
+			b.claimChildren(p, claimed)
+			if b.resolve(p) {
+				out = append(out, p)
+			}
+		case repository.IsOperatorApplication(r.Kind):
+			// an operator reconciles in its own cluster: the workloads it
+			// owns live next to the custom resource
+			p := &placement{root: r, rootHost: cn, cluster: cn, namespace: r.Namespace}
+			b.claimOwned(p, data, claimed)
+			if b.resolve(p) {
+				out = append(out, p)
+			}
 		}
 	}
 	return out
+}
+
+// claimOwned attaches the workloads whose Parent is the given resource in
+// the same cluster store.
+func (b *builder) claimOwned(p *placement, data *store.StoreData, claimed map[string]map[string]bool) {
+	for _, childName := range data.Children(p.root.Name) {
+		child, ok := data.Entries()[childName]
+		if !ok {
+			continue
+		}
+		p.children = append(p.children, child)
+		if claimed[p.cluster] == nil {
+			claimed[p.cluster] = map[string]bool{}
+		}
+		claimed[p.cluster][childName] = true
+	}
 }
 
 // claimChildren attaches the workloads an Application manages on its
@@ -388,7 +412,7 @@ func (b *builder) collectWorkloads(cn string, claimed map[string]bool) []*placem
 	data := b.in.Observed[cn]
 	for _, name := range sortedKeys(data.Entries()) {
 		r := data.Entries()[name]
-		if r.Kind == repository.KindApplication || claimed[name] {
+		if r.Kind == repository.KindApplication || repository.IsOperatorApplication(r.Kind) || claimed[name] {
 			continue
 		}
 		if SystemNamespaces[r.Namespace] && !labelled(r) {
@@ -434,7 +458,7 @@ func (b *builder) resolveComponent(p *placement) string {
 		b.legacyCount++
 		return r.Annotations[LegacyAnnotationName]
 	default:
-		return b.matchSelector(p)
+		return firstNonEmpty(b.matchSelector(p), r.DefaultComponent)
 	}
 }
 
@@ -448,6 +472,9 @@ func (b *builder) resolveEnvironment(p *placement) string {
 			envKey = legacy
 			b.legacyCount++
 		}
+	}
+	if envKey == "" {
+		envKey = r.DefaultEnvironment
 	}
 	if envKey == "" {
 		if c, ok := b.clusterByName[p.cluster]; ok {
@@ -468,6 +495,8 @@ func (b *builder) resolveEnvironment(p *placement) string {
 // resource declares.
 func discoveredKind(p *placement) v1alpha1.ComponentKind {
 	switch {
+	case repository.IsOperatorApplication(p.root.Kind):
+		return v1alpha1.ComponentKindOperatorApplication
 	case p.root.Kind == repository.KindApplication && len(p.children) > 0:
 		return v1alpha1.ComponentKindHelmChart
 	case p.root.Kind == repository.KindApplication:
@@ -537,10 +566,40 @@ func (b *builder) cell(ref *deploygrid.ComponentRef, declared *v1alpha1.Componen
 	kind := v1alpha1.ComponentKind(ref.Kind)
 	cell := &deploygrid.Cell{Health: repository.HealthUnknown}
 
-	versions := map[string]bool{}
-	var healths []string
+	agg := b.aggregate(kind, ref.Name, ps, cell)
+	versions, healths, mixed := agg.versions, agg.healths, agg.mixed
+	if cell.Version == "" {
+		for v := range versions {
+			cell.Version = v
+			break
+		}
+	}
+	cell.Inconsistent = len(versions) > 1 || mixed
+	cell.Drifted = cell.DesiredVersion != "" && cell.Version != "" && cell.DesiredVersion != cell.Version
+	cell.Health = rollupHealth(healths)
+	slices.Sort(cell.Hosts)
+	cell.Hosts = slices.Compact(cell.Hosts)
+
+	if declared != nil {
+		cell.Links = b.links(declared, env, cell)
+	}
+	return cell
+}
+
+// cellAggregate is what the placements of one cell contribute.
+type cellAggregate struct {
+	versions map[string]bool
+	healths  []string
+	mixed    bool
+}
+
+// aggregate folds every placement into the cell: the first one fixes the
+// headline fields, all of them contribute versions, health, artifacts and
+// hosts.
+func (b *builder) aggregate(kind v1alpha1.ComponentKind, component string, ps []*placement, cell *deploygrid.Cell) cellAggregate {
+	agg := cellAggregate{versions: map[string]bool{}}
 	for i, p := range ps {
-		actual := actualVersion(kind, ref.Name, p)
+		actual := actualVersion(kind, component, p)
 		if i == 0 {
 			cell.Version = actual
 			cell.DesiredVersion = p.root.DesiredVersion
@@ -551,28 +610,16 @@ func (b *builder) cell(ref *deploygrid.ComponentRef, declared *v1alpha1.Componen
 			cell.Clusters = append(cell.Clusters, p.cluster)
 		}
 		if actual != "" {
-			versions[actual] = true
+			agg.versions[actual] = true
 		}
-		healths = append(healths, placementHealth(p)...)
+		if sv := scanVersions(component, p); kind == v1alpha1.ComponentKindOperatorApplication && sv.mixed() {
+			agg.mixed = true
+		}
+		agg.healths = append(agg.healths, placementHealth(p)...)
 		cell.Artifacts = append(cell.Artifacts, b.placementArtifacts(p)...)
 		cell.Hosts = append(cell.Hosts, placementHosts(p)...)
 	}
-	if cell.Version == "" {
-		for v := range versions {
-			cell.Version = v
-			break
-		}
-	}
-	cell.Inconsistent = len(versions) > 1
-	cell.Drifted = cell.DesiredVersion != "" && cell.Version != "" && cell.DesiredVersion != cell.Version
-	cell.Health = rollupHealth(healths)
-	slices.Sort(cell.Hosts)
-	cell.Hosts = slices.Compact(cell.Hosts)
-
-	if declared != nil {
-		cell.Links = b.links(declared, env, cell)
-	}
-	return cell
+	return agg
 }
 
 // placementHealth lists the health of the root and its workloads; ingresses
@@ -605,30 +652,44 @@ func placementHosts(p *placement) []string {
 
 // observedVersions summarises the versions found on a placement.
 type observedVersions struct {
-	chart     string // chart version stamped on workloads
-	container string // first container version
-	named     string // container (or workload) named after the component
+	chart     string   // chart version stamped on workloads
+	stamped   string   // app.kubernetes.io/version stamped on workloads
+	container string   // first container version
+	named     string   // container (or workload) named after the component
+	distinct  []string // distinct container versions across root and children
 }
 
 func scanVersions(component string, p *placement) observedVersions {
-	v := observedVersions{chart: p.root.ChartVersion}
+	v := observedVersions{chart: p.root.ChartVersion, stamped: p.root.StampedVersion}
+	seen := map[string]bool{}
 	for _, r := range append([]*repository.Resource{p.root}, p.children...) {
-		if v.chart == "" {
-			v.chart = r.ChartVersion
-		}
-		for _, c := range r.Components {
-			if c.Kind != repository.VersionKindContainer {
-				continue
-			}
-			if v.container == "" {
-				v.container = c.Version
-			}
-			if v.named == "" && (c.Name == component || r.ObjectName == component) {
-				v.named = c.Version
-			}
-		}
+		v.chart = firstNonEmpty(v.chart, r.ChartVersion)
+		v.stamped = firstNonEmpty(v.stamped, r.StampedVersion)
+		v.scanContainers(component, r, seen)
 	}
 	return v
+}
+
+func (v *observedVersions) scanContainers(component string, r *repository.Resource, seen map[string]bool) {
+	for _, c := range r.Components {
+		if c.Kind != repository.VersionKindContainer {
+			continue
+		}
+		if !seen[c.Version] {
+			seen[c.Version] = true
+			v.distinct = append(v.distinct, c.Version)
+		}
+		v.container = firstNonEmpty(v.container, c.Version)
+		if v.named == "" && (c.Name == component || r.ObjectName == component) {
+			v.named = c.Version
+		}
+	}
+}
+
+// mixed reports whether an operator application runs more than one version
+// across its workloads, which the cell reports as inconsistent.
+func (v *observedVersions) mixed() bool {
+	return len(v.distinct) > 1
 }
 
 // actualVersion picks the running version of a placement for the component
@@ -642,6 +703,16 @@ func actualVersion(kind v1alpha1.ComponentKind, component string, p *placement) 
 		return firstNonEmpty(v.named, v.container)
 	case v1alpha1.ComponentKindArgoCDApplication:
 		return firstNonEmpty(p.root.SyncRevision, v.chart)
+	case v1alpha1.ComponentKindOperatorApplication:
+		// what the operator reports as running, else what its workloads run
+		// (when they agree), else the version they were stamped with
+		if p.root.SyncRevision != "" {
+			return p.root.SyncRevision
+		}
+		if len(v.distinct) == 1 {
+			return v.distinct[0]
+		}
+		return firstNonEmpty(v.stamped, v.container)
 	case v1alpha1.ComponentKindService, v1alpha1.ComponentKindCustom:
 		return firstNonEmpty(v.chart, v.named, v.container, p.root.SyncRevision)
 	default:

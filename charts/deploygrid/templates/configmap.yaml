@@ -10,6 +10,11 @@ data:
     control:
       enabled: {{ .Values.control.enabled }}
       namespace: {{ .Release.Namespace }}
+    {{- with .Values.sources.applicationKinds }}
+    sources:
+      applicationKinds:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
     {{- if .Values.clusters }}
     clusters:
       {{- if .Values.environments }}

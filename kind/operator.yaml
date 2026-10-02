@@ -1,0 +1,82 @@
+## Simulates an operator-installed application on an app cluster: the
+## RiteSuite custom resource (CRD in operator-crd.yaml) and the workloads an
+## operator would create for it. setup.sh adds the controller
+## ownerReferences after the CR exists, since they must carry its UID.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ritesuite
+---
+apiVersion: platform.ritesuite.com/v1alpha1
+kind: RiteSuite
+metadata:
+  name: dev
+  namespace: ritesuite
+spec:
+  preset: dev
+  registry: registry.example.com/roadside/next
+  version: 0.2.0
+status:
+  observedGeneration: 1
+  readyComponents: 2
+  totalComponents: 2
+  conditions:
+    - type: Ready
+      status: "True"
+      reason: Ready
+      message: all components ready
+      lastTransitionTime: "2026-10-01T00:00:00Z"
+  components:
+    - name: management
+      image: registry.example.com/roadside/next/management:0.2.0
+      ready: true
+    - name: console
+      image: registry.example.com/roadside/next/console:0.2.0
+      ready: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: ritesuite
+  name: dev-management
+  labels:
+    app.kubernetes.io/name: management
+    app.kubernetes.io/instance: dev
+    app.kubernetes.io/part-of: ritesuite
+    app.kubernetes.io/managed-by: ritesuite-operator
+    app.kubernetes.io/version: 0.2.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: management, app.kubernetes.io/instance: dev}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: management, app.kubernetes.io/instance: dev}
+    spec:
+      containers:
+        - name: management
+          image: registry.example.com/roadside/next/management:0.2.0
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: ritesuite
+  name: dev-console
+  labels:
+    app.kubernetes.io/name: console
+    app.kubernetes.io/instance: dev
+    app.kubernetes.io/part-of: ritesuite
+    app.kubernetes.io/managed-by: ritesuite-operator
+    app.kubernetes.io/version: 0.2.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: console, app.kubernetes.io/instance: dev}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: console, app.kubernetes.io/instance: dev}
+    spec:
+      containers:
+        - name: console
+          image: registry.example.com/roadside/next/console:0.2.0

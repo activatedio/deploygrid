@@ -16,6 +16,11 @@ rules:
   - apiGroups: ['argoproj.io']
     resources: ['applications']
     verbs: ['get', 'watch', 'list']
+  {{- range .Values.sources.applicationKinds }}
+  - apiGroups: [{{ .group | quote }}]
+    resources: [{{ .resource | quote }}]
+    verbs: ['get', 'watch', 'list']
+  {{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

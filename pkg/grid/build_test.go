@@ -316,3 +316,82 @@ func TestBuild_Inconsistent(t *testing.T) {
 	assert.Equal(t, []string{app1Cluster}, cell.Clusters, "both workloads run on one cluster")
 	assert.Empty(t, res.Grid.Warnings, "fully labelled resources raise no warnings: %v", res.Grid.Warnings)
 }
+
+func operatorApp(ns, name, desired, running string, health string) *repository.Resource {
+	return &repository.Resource{
+		Name:             repository.CustomResourceName("platform.example.com", "Suite", ns, name),
+		Kind:             repository.KindApplicationPrefix + "platform.example.com/suites",
+		Namespace:        ns,
+		ObjectName:       name,
+		DesiredVersion:   desired,
+		SyncRevision:     running,
+		Health:           health,
+		DefaultComponent: "suite",
+	}
+}
+
+func ownedDeployment(ns, owner, name, image, stamped string) *repository.Resource {
+	return &repository.Resource{
+		Name:           "namespaces/" + ns + "/deployments/" + name,
+		Kind:           repository.KindDeployment,
+		Namespace:      ns,
+		ObjectName:     name,
+		Parent:         repository.CustomResourceName("platform.example.com", "Suite", ns, owner),
+		Labels:         map[string]string{"app.kubernetes.io/managed-by": "suite-operator", "app.kubernetes.io/instance": owner, "app.kubernetes.io/name": name},
+		Components:     []repository.Component{{Name: name, Kind: repository.VersionKindContainer, Version: image, Image: "registry/" + name + ":" + image}},
+		StampedVersion: stamped,
+		Health:         repository.HealthHealthy,
+	}
+}
+
+func TestBuild_OperatorApplication(t *testing.T) {
+	in := fixture(t)
+	in.Clusters = append(in.Clusters, grid.ClusterInfo{Name: "ops-dev", Environment: "dev"})
+	in.Observed["ops-dev"] = snapshot(t,
+		// the operator reports what runs; workloads agree
+		operatorApp("suite", "dev", "0.2.0", "0.2.0", repository.HealthDegraded),
+		ownedDeployment("suite", "dev", "management", "0.2.0", "0.2.0"),
+		ownedDeployment("suite", "dev", "console", "0.2.0", "0.2.0"),
+	)
+	in.Observed[app2Cluster] = snapshot(t,
+		// no running version reported; workloads disagree mid-rollout
+		operatorApp("suite", "stage", "0.3.0", "", repository.HealthProgressing),
+		ownedDeployment("suite", "stage", "management", "0.3.0", "0.3.0"),
+		ownedDeployment("suite", "stage", "console", "0.2.0", "0.3.0"),
+	)
+
+	res := grid.Build(in)
+	var row *deploygrid.GridRow
+	for _, g := range res.Grid.Groups {
+		for _, r := range g.Rows {
+			if r.Component.Name == "suite" {
+				row = r
+			}
+		}
+	}
+	require.NotNil(t, row, "operator application discovered as component 'suite'")
+	a := assert.New(t)
+	a.True(row.Component.Discovered)
+	a.Equal(string(v1alpha1.ComponentKindOperatorApplication), row.Component.Kind)
+
+	dev := row.Cells["dev"]
+	require.NotNil(t, dev, "environment from the cluster default: %v", row.Cells)
+	a.Equal("0.2.0", dev.Version)
+	a.Equal("0.2.0", dev.DesiredVersion)
+	a.False(dev.Drifted)
+	a.False(dev.Inconsistent)
+	a.Equal(repository.HealthDegraded, dev.Health, "the operator's own condition dominates")
+	a.Len(dev.Artifacts, 3, "custom resource plus two owned deployments")
+
+	stage := row.Cells["stage"]
+	require.NotNil(t, stage)
+	a.True(stage.Inconsistent, "workloads run different versions")
+	a.Equal("0.3.0", stage.Version, "the stamped version when workloads disagree")
+	a.Equal("0.3.0", stage.DesiredVersion)
+
+	for _, u := range res.Unassigned {
+		a.NotEqual("management", u.Name, "owned workloads are claimed, not unassigned")
+	}
+	require.Len(t, res.Discovered, 3)
+	a.Equal(v1alpha1.ComponentKindOperatorApplication, res.Discovered[2].Kind)
+}

@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/activatedio/deploygrid/pkg/apis/deploygrid.activated.io/v1alpha1"
+	"github.com/activatedio/deploygrid/pkg/config"
 	"github.com/activatedio/deploygrid/pkg/deploygrid"
 )
 
@@ -25,7 +26,7 @@ func TestE2E(t *testing.T) {
 		// against it, authenticating with the token the server generated for
 		// the agent-mode Cluster resource.
 		token := waitForToken(t, "../.kind/kubeconfig-ops-cluster-1.yaml", "deploygrid", "kind-app-cluster-2-collector-token")
-		startCollector(t, baseURL+"/api", "kind-app-cluster-2", token, "../.kind/kubeconfig-app-cluster-2.yaml")
+		startCollector(t, baseURL+"/api", "kind-app-cluster-2", token, "../.kind/kubeconfig-app-cluster-2.yaml", &config.SourcesConfig{})
 
 		a.EventuallyWithT(func(c *assert.CollectT) {
 
@@ -54,8 +55,12 @@ func TestE2E(t *testing.T) {
 			require.NoError(c, err)
 			require.True(c, resp.IsSuccess(), resp.String())
 			require.Equal(c, "dev", sg.Environments[0].Name)
-			require.Len(c, sg.Groups, 1)
+			// the declared "apps" group, then the operator-installed suite in
+			// the implicit Default group
+			require.Len(c, sg.Groups, 2)
 			require.Equal(c, "apps", sg.Groups[0].Name)
+			require.Equal(c, "Default", sg.Groups[1].Name)
+			require.Equal(c, "ritesuite", sg.Groups[1].Rows[0].Component.Name)
 			require.Len(c, sg.Groups[0].Rows, 2)
 			appA := sg.Groups[0].Rows[0]
 			require.Equal(c, "app-a", appA.Component.Name)
@@ -78,7 +83,7 @@ func TestE2E(t *testing.T) {
 			resp, err = json(r.R()).SetError(e).SetResult(rows).Get("/api/systems/apps/components")
 			require.NoError(c, err)
 			require.True(c, resp.IsSuccess(), resp.String())
-			require.Len(c, rows.Items, 2)
+			require.Len(c, rows.Items, 3, "app-a, discovered app-b, operator-installed ritesuite")
 
 			// app-b is not declared: discovery shows it and the reconciler
 			// materialises a Component resource for it
@@ -108,6 +113,24 @@ func TestE2E(t *testing.T) {
 			resp, err = json(r.R()).SetError(e).Get("/api/systems/missing")
 			require.NoError(c, err)
 			require.Equal(c, 404, resp.StatusCode())
+
+			// an operator-installed application: the RiteSuite custom resource
+			// and the deployments that carry a controller ownerReference to it
+			suite := &deploygrid.GridRow{}
+			resp, err = json(r.R()).SetError(e).SetResult(suite).Get("/api/systems/apps/components/ritesuite")
+			require.NoError(c, err)
+			require.True(c, resp.IsSuccess(), resp.String())
+			require.Equal(c, string(v1alpha1.ComponentKindOperatorApplication), suite.Component.Kind)
+			sdev := suite.Cells["dev"]
+			require.NotNil(c, sdev, "dev cell via the ritesuite namespace rule: %v", suite.Cells)
+			require.Equal(c, "0.2.0", sdev.Version)
+			require.Equal(c, "0.2.0", sdev.DesiredVersion)
+			// the custom resource claims Ready, but its fixture Deployments use
+			// unpullable images and never become Available: workload health
+			// dominates the rollup
+			require.Equal(c, "Degraded", sdev.Health)
+			require.Len(c, sdev.Artifacts, 3, "custom resource plus two owned deployments")
+			require.Equal(c, "Healthy", sdev.Artifacts[0].Health, "the operator's own condition is still visible on its artifact")
 
 			// configurations: the qa document deep-merges over the system-wide one
 			cl := &deploygrid.ConfigurationList{}

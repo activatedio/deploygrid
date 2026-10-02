@@ -19,6 +19,20 @@ func (m *Main) DoValidate() error {
 		validation.Field(&m.Control),
 		validation.Field(&m.Clusters),
 		validation.Field(&m.Collector),
+		validation.Field(&m.Sources),
+	)
+}
+
+func (s SourcesConfig) Validate() error {
+	return validate(&s, validation.Field(&s.ApplicationKinds))
+}
+
+func (a ApplicationKindConfig) Validate() error {
+	return validate(&a,
+		validation.Field(&a.Group, validation.Required),
+		validation.Field(&a.Version, validation.Required),
+		validation.Field(&a.Resource, validation.Required),
+		validation.Field(&a.Kind, validation.Required),
 	)
 }
 

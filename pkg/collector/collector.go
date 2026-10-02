@@ -271,7 +271,7 @@ func sortedKinds(m map[string]*kindSink) []string {
 
 // RunFromConfig builds the Kubernetes client from the configuration and runs
 // a collector until ctx is cancelled.
-func RunFromConfig(ctx context.Context, cfg *config.CollectorConfig) error {
+func RunFromConfig(ctx context.Context, cfg *config.CollectorConfig, sources *config.SourcesConfig) error {
 	if err := cfg.ValidateForRun(); err != nil {
 		return err
 	}
@@ -309,7 +309,7 @@ func RunFromConfig(ctx context.Context, cfg *config.CollectorConfig) error {
 		Token:             token,
 		Flush:             time.Duration(cfg.FlushSeconds) * time.Second,
 		Heartbeat:         time.Duration(cfg.HeartbeatSeconds) * time.Second,
-		Resources:         k8s.NewResources(client),
+		Resources:         k8s.NewResources(client, sources.ApplicationKinds),
 		KubernetesVersion: k8sVersion,
 	}).Run(ctx)
 	return nil

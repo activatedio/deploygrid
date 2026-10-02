@@ -22,6 +22,7 @@ func NewMainConfig(c cs.Config) *Main {
 	c.MustRead("swagger", &m.Swagger)
 	c.MustRead("control", &m.Control)
 	c.MustRead("clusters", &m.Clusters)
+	c.MustRead("sources", &m.Sources)
 
 	if err := m.DoValidate(); err != nil {
 		panic(err)
@@ -39,6 +40,7 @@ type SubConfigs struct {
 	Swagger  *SwaggerConfig
 	Control  *ControlConfig
 	Clusters *ClustersConfig
+	Sources  *SourcesConfig
 }
 
 func NewSubConfigs(m *Main) SubConfigs {
@@ -48,5 +50,6 @@ func NewSubConfigs(m *Main) SubConfigs {
 		Swagger:  &m.Swagger,
 		Control:  &m.Control,
 		Clusters: &m.Clusters,
+		Sources:  &m.Sources,
 	}
 }

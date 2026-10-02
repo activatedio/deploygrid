@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"strings"
 )
 
 // Resource kinds observed from clusters.
@@ -9,7 +10,22 @@ const (
 	KindApplication = "argocd-application"
 	KindDeployment  = "deployment"
 	KindIngress     = "ingress"
+	// KindApplicationPrefix starts the kind of every operator application
+	// resource: application/<group>/<resource>.
+	KindApplicationPrefix = "application/"
 )
+
+// IsOperatorApplication reports whether a kind is an operator application
+// custom resource.
+func IsOperatorApplication(kind string) bool {
+	return strings.HasPrefix(kind, KindApplicationPrefix)
+}
+
+// CustomResourceName is the store key of a custom resource, also used as
+// the Parent of workloads that carry a controller ownerReference to it.
+func CustomResourceName(group, kind, namespace, name string) string {
+	return "customresources/" + group + "/" + kind + "/" + namespace + "/" + name
+}
 
 // Component (version) kinds.
 const (
@@ -68,10 +84,17 @@ type Resource struct {
 	// SyncRevision is the revision the delivery source last applied.
 	SyncRevision string `json:"syncRevision,omitempty"`
 	// ChartVersion is the Helm chart version stamped on a workload.
-	ChartVersion string           `json:"chartVersion,omitempty"`
-	Health       string           `json:"health,omitempty"`
-	Destination  *ClusterLocation `json:"destination,omitempty"`
-	Hosts        []string         `json:"hosts,omitempty"`
+	ChartVersion string `json:"chartVersion,omitempty"`
+	// StampedVersion is the app.kubernetes.io/version label of a workload.
+	StampedVersion string           `json:"stampedVersion,omitempty"`
+	Health         string           `json:"health,omitempty"`
+	Destination    *ClusterLocation `json:"destination,omitempty"`
+	Hosts          []string         `json:"hosts,omitempty"`
+	// DefaultComponent and DefaultEnvironment are identities the collector
+	// derived from the resource itself (for operator applications); labels
+	// and declared selectors take precedence over them.
+	DefaultComponent   string `json:"defaultComponent,omitempty"`
+	DefaultEnvironment string `json:"defaultEnvironment,omitempty"`
 }
 
 type ResourceStore interface {
@@ -97,11 +120,17 @@ type Resources struct {
 	Applications ResourceRepository
 	Deployment   ResourceRepository
 	Ingress      ResourceRepository
+	// Custom holds operator application repositories keyed by the kind
+	// they emit (application/<group>/<resource>).
+	Custom map[string]ResourceRepository
 }
 
 // ByKind returns the repositories keyed by the kind each one emits.
 func (r *Resources) ByKind() map[string]ResourceRepository {
 	out := map[string]ResourceRepository{}
+	for k, repo := range r.Custom {
+		out[k] = repo
+	}
 	if r.Applications != nil {
 		out[KindApplication] = r.Applications
 	}

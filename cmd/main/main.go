@@ -77,7 +77,7 @@ DEPLOYGRID_COLLECTOR_TOKEN (or DEPLOYGRID_COLLECTOR_TOKEN_FILE).`,
 			m := loadConfig(cmd)
 			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 			defer stop()
-			return collector.RunFromConfig(ctx, &m.Collector)
+			return collector.RunFromConfig(ctx, &m.Collector, &m.Sources)
 		},
 	}
 	return cmd

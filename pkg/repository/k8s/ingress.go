@@ -31,10 +31,7 @@ func NewIngressRepository(client dynamic.Interface) repository.ResourceRepositor
 				return nil, err
 			}
 
-			parent := ""
-			if mb, ok := ing.Labels[labelManagedBy]; ok && mb == "Helm" {
-				parent = ApplicationName(ing.Labels[labelInstance])
-			}
+			parent := parentOf(ing.ObjectMeta)
 
 			seen := map[string]bool{}
 			var hosts []string
