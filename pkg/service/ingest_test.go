@@ -93,3 +93,21 @@ func TestObservationService_SnapshotThenDelta(t *testing.T) {
 	_, err = svc.Ingest(ctx, "edge", &deploygrid.Observation{Snapshot: true})
 	require.Error(t, err, "snapshot must list kinds")
 }
+
+func TestObservationService_EmptyClusterAsksForResync(t *testing.T) {
+	svc, _ := newIngest(t)
+	ctx := context.Background()
+
+	// a heartbeat (no changes) from a cluster the server holds nothing for
+	resp, err := svc.Ingest(ctx, "edge", &deploygrid.Observation{})
+	require.NoError(t, err)
+	assert.True(t, resp.Resync, "a restarted server must ask for a snapshot even when nothing changed")
+
+	resp, err = svc.Ingest(ctx, "edge", &deploygrid.Observation{Snapshot: true, Kinds: []string{repository.KindDeployment}})
+	require.NoError(t, err)
+	assert.False(t, resp.Resync)
+
+	resp, err = svc.Ingest(ctx, "edge", &deploygrid.Observation{})
+	require.NoError(t, err)
+	assert.False(t, resp.Resync, "once state exists, heartbeats are plain acknowledgements")
+}

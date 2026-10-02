@@ -53,6 +53,15 @@ func (s *observationService) Authenticate(ctx context.Context, token string) (st
 func (s *observationService) Ingest(_ context.Context, cluster string, obs *deploygrid.Observation) (*deploygrid.ObservationResponse, error) {
 	resp := &deploygrid.ObservationResponse{Cluster: cluster}
 
+	// A cluster the server holds nothing for (first contact, or the server
+	// restarted) needs a snapshot before anything else is meaningful. A
+	// heartbeat or a delta arriving in that state is accepted but answered
+	// with the resync signal, so a quiet cluster does not stay blank until
+	// its collector happens to restart.
+	if !obs.Snapshot && !s.registry.Connected(cluster) {
+		resp.Resync = true
+	}
+
 	var err error
 	if obs.Snapshot {
 		err = s.ingestSnapshot(cluster, obs, resp)

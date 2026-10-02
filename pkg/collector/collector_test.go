@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -135,4 +136,54 @@ func TestCollector_WrongTokenKeepsRetrying(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 	data, _ := reg.Snapshot()
 	assert.Empty(t, data, "nothing is recorded for an unauthenticated collector")
+}
+
+// TestCollector_ResendsSnapshotAfterServerRestart simulates a server that
+// loses its state (fresh registry) while the collector keeps running with
+// nothing changing on the cluster: the next heartbeat must repopulate it.
+func TestCollector_ResendsSnapshotAfterServerRestart(t *testing.T) {
+	var reg atomic.Pointer[service.SourceRegistry]
+	reg.Store(service.NewSourceRegistry())
+	resolver := service.NewConfigTokenResolver(&config.ClustersConfig{Clusters: []config.ClusterConfig{
+		{Name: "edge", Mode: config.ClusterModeAgent, Token: "secret"},
+	}})
+	var down atomic.Bool
+	r := mux.NewRouter()
+	r.HandleFunc("/api/observations", func(w http.ResponseWriter, req *http.Request) {
+		if down.Load() {
+			http.Error(w, "no healthy upstream", http.StatusServiceUnavailable)
+			return
+		}
+		svc := service.NewObservationService(service.ObservationServiceParams{Registry: reg.Load(), Resolvers: []service.TokenResolver{resolver}})
+		controller.NewObservations(svc).Post(w, req)
+	}).Methods(http.MethodPost)
+	srv := httptest.NewServer(r)
+	defer srv.Close()
+
+	deployments := &fakeRepository{ready: make(chan struct{})}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	c := collector.New(collector.Options{
+		Server: srv.URL + "/api", Cluster: "edge", Token: "secret",
+		Flush: 30 * time.Millisecond, Heartbeat: 150 * time.Millisecond,
+		Resources: &repository.Resources{Deployment: deployments},
+	})
+	go c.Run(ctx)
+	<-deployments.ready
+	require.NoError(t, deployments.store.Replace([]*repository.Resource{dep("a", "x", "1")}))
+	require.Eventually(t, func() bool {
+		data, _ := reg.Load().Snapshot()
+		return data["edge"] != nil && len(data["edge"].Entries()) == 1
+	}, 5*time.Second, 20*time.Millisecond, "initial snapshot lands")
+
+	// server goes away and comes back with no state; the cluster is quiet
+	down.Store(true)
+	time.Sleep(400 * time.Millisecond)
+	reg.Store(service.NewSourceRegistry())
+	down.Store(false)
+
+	require.Eventually(t, func() bool {
+		data, _ := reg.Load().Snapshot()
+		return data["edge"] != nil && len(data["edge"].Entries()) == 1
+	}, 10*time.Second, 50*time.Millisecond, "the restarted server is repopulated without any cluster change or collector restart")
 }

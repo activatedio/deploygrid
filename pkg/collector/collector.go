@@ -171,8 +171,11 @@ func (c *Collector) push(ctx context.Context, force bool) error {
 	obs := c.observation(batches)
 	resp, err := c.send(ctx, obs)
 	if err != nil {
-		for _, b := range batches {
-			c.sinks[b.kind].restore()
+		// The server may have restarted empty behind the failure, so every
+		// kind resends a snapshot once it is reachable again, including kinds
+		// that had nothing pending (a failed heartbeat has no batches).
+		for _, s := range c.sinks {
+			s.restore()
 		}
 		return err
 	}
