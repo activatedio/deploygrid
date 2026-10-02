@@ -41,13 +41,16 @@ Two modes, usable together:
 | Mode | Where the watch runs | Configure |
 |---|---|---|
 | **agent** (recommended) | A collector inside the observed cluster pushes to the server | `Cluster` resource with `collection.mode: agent`, then install `charts/deploygrid-collector` there |
-| **kubeconfig** / **local** | The server watches the cluster itself | `clusters:` list in the server config (`local` uses the in-cluster service account) |
+| **kubeconfig** / **local** | The server watches the cluster itself | `clusters:` list in the server config (`local` uses the in-cluster service account; `auth: google` uses the pod's Google identity against a GKE endpoint instead of a kubeconfig file) |
 
 The images are distroless (API) and unprivileged nginx (UI, which proxies
 `/api` to the API container in the same pod). There is no shell or cloud CLI
 in the API image, so kubeconfigs that need a credential helper such as the
 EKS `aws` exec plugin cannot be used in **kubeconfig** mode; use a collector
-for those clusters.
+for those clusters, or for GKE set `auth: google` and give the server's
+service account workload identity (the pod's Application Default
+Credentials become the bearer token, no plugin involved). This is the right
+choice when the observed cluster cannot reach the server.
 
 For an agent-mode `Cluster` the server generates a token Secret named
 `<cluster>-collector-token` in its namespace. Pass that token to the collector

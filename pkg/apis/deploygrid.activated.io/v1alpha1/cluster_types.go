@@ -36,11 +36,12 @@ const (
 	ClusterCollectionModeLocal ClusterCollectionMode = "local"
 )
 
-// SecretKeyRef points at a key in a Secret in the same namespace.
+// SecretKeyRef points at a key in a Secret in the same namespace. The key
+// defaults depend on the use: "config" for a kubeconfig, "token" for a
+// collector token.
 type SecretKeyRef struct {
 	// +kubebuilder:validation:MinLength=1
 	Name string `json:"name"`
-	// +kubebuilder:default=config
 	// +optional
 	Key string `json:"key,omitempty"`
 }
@@ -50,12 +51,13 @@ type ClusterCollection struct {
 	// +kubebuilder:default=agent
 	// +optional
 	Mode ClusterCollectionMode `json:"mode,omitempty"`
-	// KubeconfigSecretRef is required for mode=kubeconfig.
+	// KubeconfigSecretRef is required for mode=kubeconfig. The key defaults
+	// to "config".
 	// +optional
 	KubeconfigSecretRef *SecretKeyRef `json:"kubeconfigSecretRef,omitempty"`
 	// TokenSecretRef holds the bearer token an agent must present for
-	// mode=agent. When unset the server generates one and records the Secret
-	// name here.
+	// mode=agent; the key defaults to "token". When unset the server
+	// generates Secret <cluster>-collector-token.
 	// +optional
 	TokenSecretRef *SecretKeyRef `json:"tokenSecretRef,omitempty"`
 	// InsecureSkipTLSVerify disables TLS verification for mode=kubeconfig.

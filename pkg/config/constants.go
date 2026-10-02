@@ -13,4 +13,6 @@ const (
 	ClusterModeKubeconfig = "kubeconfig"
 	ClusterModeLocal      = "local"
 	ClusterModeAgent      = "agent"
+
+	ClusterAuthGoogle = "google"
 )

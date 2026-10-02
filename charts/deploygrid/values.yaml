@@ -31,6 +31,13 @@ ui:
 #     address: https://localhost:8080
 #   - name: local
 #     mode: local
+#   # GKE cluster in another project, reached from here with this pod's
+#   # Google identity (workload identity on the service account) against the
+#   # cluster's DNS-based control-plane endpoint, as Argo CD does:
+#   - name: rs-dev01
+#     mode: kubeconfig
+#     auth: google
+#     address: https://gke-xxxx.us-central1.gke.goog
 clusters: []
 environments: []
 

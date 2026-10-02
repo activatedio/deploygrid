@@ -77,3 +77,29 @@ clusters:
 		config.NewMainConfig(apiinfraconfig.NewConfig(p))
 	})
 }
+
+func TestClusterConfig_GoogleAuth(t *testing.T) {
+	p := writeConfig(t, `
+clusters:
+  clusters:
+    - name: rs-dev01
+      mode: kubeconfig
+      auth: google
+      address: https://gke-1234.us-central1.gke.goog
+`)
+	m := config.NewMainConfig(apiinfraconfig.NewConfig(p))
+	require.Len(t, m.Clusters.Clusters, 1)
+	assert.Equal(t, config.ClusterAuthGoogle, m.Clusters.Clusters[0].Auth)
+	assert.Empty(t, m.Clusters.Clusters[0].KubeConfigPath, "no kubeconfig needed with a credential")
+
+	assert.Panics(t, func() {
+		config.NewMainConfig(apiinfraconfig.NewConfig(writeConfig(t, `
+clusters:
+  clusters:
+    - name: bad
+      mode: kubeconfig
+      auth: aws
+      address: https://example
+`)))
+	}, "unknown auth is rejected")
+}

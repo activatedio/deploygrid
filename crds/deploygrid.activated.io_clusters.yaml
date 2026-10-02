@@ -73,10 +73,11 @@ spec:
                       Intended for local development only.
                     type: boolean
                   kubeconfigSecretRef:
-                    description: KubeconfigSecretRef is required for mode=kubeconfig.
+                    description: |-
+                      KubeconfigSecretRef is required for mode=kubeconfig. The key defaults
+                      to "config".
                     properties:
                       key:
-                        default: config
                         type: string
                       name:
                         minLength: 1
@@ -96,11 +97,10 @@ spec:
                   tokenSecretRef:
                     description: |-
                       TokenSecretRef holds the bearer token an agent must present for
-                      mode=agent. When unset the server generates one and records the Secret
-                      name here.
+                      mode=agent; the key defaults to "token". When unset the server
+                      generates Secret <cluster>-collector-token.
                     properties:
                       key:
-                        default: config
                         type: string
                       name:
                         minLength: 1

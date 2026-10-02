@@ -3,10 +3,13 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"sync"
 
 	"github.com/sony/gobreaker/v2"
 	"go.uber.org/fx"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -32,7 +35,7 @@ func (c *resourceRepositoryClusterAwareAccessor) ClusterNames(_ context.Context)
 	return c.clusterNames
 }
 
-func (c *resourceRepositoryClusterAwareAccessor) Get(_ context.Context, clusterName string) (*repository.Resources, error) {
+func (c *resourceRepositoryClusterAwareAccessor) Get(ctx context.Context, clusterName string) (*repository.Resources, error) {
 
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -49,15 +52,7 @@ func (c *resourceRepositoryClusterAwareAccessor) Get(_ context.Context, clusterN
 
 	r, err := cl.cb.Execute(func() (*repository.Resources, error) {
 
-		var cfg *rest.Config
-		var err error
-
-		if cl.config.EffectiveMode() == config.ClusterModeLocal {
-			cfg, err = rest.InClusterConfig()
-		} else {
-			cfg, err = clientcmd.BuildConfigFromFlags("", cl.config.KubeConfigPath)
-		}
-
+		cfg, err := restConfigFor(ctx, cl.config)
 		if err != nil {
 			return nil, err
 		}
@@ -119,5 +114,32 @@ func NewResourceRepositoryClusterAwareAccessor(params ResourceRepositoryClusterA
 		clusters:     clusters,
 		repositories: map[string]*repository.Resources{},
 		kinds:        params.Sources.ApplicationKinds,
+	}
+}
+
+// restConfigFor builds the client configuration of a pull-mode cluster: the
+// in-cluster service account, a kubeconfig file, or Address with a Google
+// Application Default Credentials bearer token (GKE workload identity).
+func restConfigFor(ctx context.Context, c *config.ClusterConfig) (*rest.Config, error) {
+	switch {
+	case c.EffectiveMode() == config.ClusterModeLocal:
+		return rest.InClusterConfig()
+	case c.Auth == config.ClusterAuthGoogle:
+		ts, err := google.DefaultTokenSource(ctx, "https://www.googleapis.com/auth/cloud-platform")
+		if err != nil {
+			return nil, fmt.Errorf("cluster %s: google credentials: %w", c.Name, err)
+		}
+		cfg := &rest.Config{
+			Host:            c.Address,
+			TLSClientConfig: rest.TLSClientConfig{CAFile: c.CAFile},
+		}
+		cfg.Wrap(func(rt http.RoundTripper) http.RoundTripper {
+			return &oauth2.Transport{Source: ts, Base: rt}
+		})
+		return cfg, nil
+	default:
+		rules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: c.KubeConfigPath}
+		overrides := &clientcmd.ConfigOverrides{CurrentContext: c.ContextName}
+		return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, overrides).ClientConfig()
 	}
 }

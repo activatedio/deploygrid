@@ -32,6 +32,12 @@ data:
           {{- if .mode }}
           mode: {{ .mode }}
           {{- end }}
+          {{- if .auth }}
+          auth: {{ .auth }}
+          {{- end }}
+          {{- if .caFile }}
+          caFile: {{ .caFile }}
+          {{- end }}
           {{- if .local }}
           local: true
           {{- end }}

@@ -88,7 +88,8 @@ func (c ClusterConfig) Validate() error {
 	return validate(&c,
 		validation.Field(&c.Name, validation.Required),
 		validation.Field(&c.Mode, validation.In(ClusterModeKubeconfig, ClusterModeLocal, ClusterModeAgent, "")),
-		validation.Field(&c.KubeConfigPath, validation.When(mode == ClusterModeKubeconfig, validation.Required)),
+		validation.Field(&c.Auth, validation.In(ClusterAuthGoogle, "")),
+		validation.Field(&c.KubeConfigPath, validation.When(mode == ClusterModeKubeconfig && c.Auth == "", validation.Required.Error("kubeConfigPath or auth is required"))),
 		validation.Field(&c.Address, validation.When(mode == ClusterModeKubeconfig, validation.Required), is.URL),
 		validation.Field(&c.Token, validation.When(mode != ClusterModeAgent, validation.Empty.Error("only agent clusters take a token"))),
 	)

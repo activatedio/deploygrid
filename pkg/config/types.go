@@ -117,8 +117,16 @@ type ClusterConfig struct {
 	// Mode is kubeconfig (default: the server watches the cluster through
 	// KubeConfigPath), local (in-cluster service account) or agent (a
 	// collector pushes observations; nothing is watched server-side).
-	Mode                  string `description:"kubeconfig | local | agent"`
-	KubeConfigPath        string `description:"Kubeconfig path (mode kubeconfig)"`
+	Mode string `description:"kubeconfig | local | agent"`
+	// Auth, for mode kubeconfig, selects a credential instead of a kubeconfig
+	// file: "google" uses Application Default Credentials (GKE workload
+	// identity, GOOGLE_APPLICATION_CREDENTIALS) as the bearer token against
+	// Address, the way Argo CD reaches GKE clusters from another project.
+	Auth           string `description:"Credential for mode kubeconfig without a kubeconfig file: google"`
+	KubeConfigPath string `description:"Kubeconfig path (mode kubeconfig, unless auth is set)"`
+	// CAFile verifies Address when it is not signed by a public CA (GKE DNS
+	// endpoints are).
+	CAFile                string `description:"CA bundle for Address (optional)"`
 	ContextName           string `description:"Kubeconfig context"`
 	Local                 bool   `description:"Deprecated: same as mode local"`
 	InsecureSkipTLSVerify bool   `description:"Skip TLS verification (development only)"`
