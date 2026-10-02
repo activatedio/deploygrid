@@ -23,6 +23,7 @@ func NewMainConfig(c cs.Config) *Main {
 	c.MustRead("control", &m.Control)
 	c.MustRead("clusters", &m.Clusters)
 	c.MustRead("sources", &m.Sources)
+	c.MustRead("collector", &m.Collector)
 
 	if err := m.DoValidate(); err != nil {
 		panic(err)

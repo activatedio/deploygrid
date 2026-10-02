@@ -41,13 +41,19 @@ registry. The charts live under the repository path, not the organisation
 root:
 
 ```sh
-helm install deploygrid oci://ghcr.io/activatedio/deploygrid/deploygrid --version 2.0.2 -n deploygrid --create-namespace
-helm install deploygrid-collector oci://ghcr.io/activatedio/deploygrid/deploygrid-collector --version 2.0.2 -n deploygrid
+helm install deploygrid oci://ghcr.io/activatedio/deploygrid/deploygrid --version 2.0.3 -n deploygrid --create-namespace
+helm install deploygrid-collector oci://ghcr.io/activatedio/deploygrid/deploygrid-collector --version 2.0.3 -n deploygrid
 ```
 
-Images: `ghcr.io/activatedio/deploygrid-api:v2.0.2` and
-`ghcr.io/activatedio/deploygrid-ui:v2.0.2` (the chart defaults follow the
+Images: `ghcr.io/activatedio/deploygrid-api:v2.0.3` and
+`ghcr.io/activatedio/deploygrid-ui:v2.0.3` (the chart defaults follow the
 chart version).
+
+For Argo CD, the OCI source is `repoURL: ghcr.io/activatedio/deploygrid`
+(no `oci://` prefix) with `chart: deploygrid` or `chart: deploygrid-collector`.
+Pass list-valued settings such as `sources.applicationKinds` through
+`valuesObject` or a values file, not `helm.parameters`, which cannot carry
+list items with JSONPath brackets intact.
 
 ## Observing clusters
 

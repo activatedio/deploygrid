@@ -15,6 +15,11 @@ api:
     # needs its own health-check policy (checks /api/healthz on 8080).
     dedicated: false
     type: ""
+  # Merged over securityContext for the API container. The distroless image
+  # runs as the named user "nonroot"; runAsNonRoot needs the numeric uid.
+  securityContext:
+    runAsUser: 65532
+    runAsGroup: 65532
 
 ui:
   image:
@@ -23,6 +28,11 @@ ui:
     tag: "v0.0.0"
   service:
     port: 80
+  # Merged over securityContext for the UI container (nginx-unprivileged
+  # runs as uid 101).
+  securityContext:
+    runAsUser: 101
+    runAsGroup: 101
 
 #
 # Clusters the server watches itself. Clusters fed by a collector need no

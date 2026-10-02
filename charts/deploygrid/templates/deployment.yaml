@@ -31,7 +31,7 @@ spec:
       containers:
         - name: {{ .Chart.Name }}-api
           securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
+            {{- toYaml (mergeOverwrite (deepCopy .Values.securityContext) .Values.api.securityContext) | nindent 12 }}
           image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.api.image.pullPolicy }}
           env:
@@ -68,7 +68,7 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
         - name: {{ .Chart.Name }}-ui
           securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
+            {{- toYaml (mergeOverwrite (deepCopy .Values.securityContext) .Values.ui.securityContext) | nindent 12 }}
           image: "{{ .Values.ui.image.repository }}:{{ .Values.ui.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.ui.image.pullPolicy }}
           env:

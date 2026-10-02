@@ -65,6 +65,9 @@ func TestNewMainConfig_NoFile(t *testing.T) {
 	m := config.NewMainConfig(apiinfraconfig.NewConfig(""))
 	assert.Equal(t, 8080, m.Server.Port)
 	assert.False(t, m.Control.Enabled)
+	// every section is read, so its defaults apply
+	assert.Equal(t, 2, m.Collector.FlushSeconds)
+	assert.Equal(t, 30, m.Collector.HeartbeatSeconds)
 }
 
 func TestNewMainConfig_Validation(t *testing.T) {
