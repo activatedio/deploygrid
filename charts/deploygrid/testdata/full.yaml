@@ -4,6 +4,8 @@ service:
 api:
   image:
     tag: "v0.0.8"
+  service:
+    dedicated: true
 
 ui:
   image:

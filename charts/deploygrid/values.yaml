@@ -10,6 +10,11 @@ api:
     tag: "v0.0.0"
   service:
     port: 8080
+    # dedicated: true also creates Service <release>-api exposing only the
+    # API container, for an ingest route that bypasses the UI's nginx and
+    # needs its own health-check policy (checks /api/healthz on 8080).
+    dedicated: false
+    type: ""
 
 ui:
   image:
