@@ -50,10 +50,8 @@ Images: `ghcr.io/activatedio/deploygrid-api:v2.0.3` and
 chart version).
 
 For Argo CD, the OCI source is `repoURL: ghcr.io/activatedio/deploygrid`
-(no `oci://` prefix) with `chart: deploygrid` or `chart: deploygrid-collector`.
-Pass list-valued settings such as `sources.applicationKinds` through
-`valuesObject` or a values file, not `helm.parameters`, which cannot carry
-list items with JSONPath brackets intact.
+(no `oci://` prefix) with `chart: deploygrid` or `chart: deploygrid-collector`;
+a `helm.values` block carries the `sources.applicationKinds` list as is.
 
 ## Observing clusters
 
