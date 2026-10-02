@@ -421,10 +421,14 @@ clusters with a collector. The UI image is `nginx-unprivileged` and proxies
 backend and CORS is off unless `server.corsAllowedOrigins` is set (the dev
 `make serve` sets it for the Vite server).
 
-Still deferred: Helm release Secrets as a source (the `helm.sh/chart` label
-already carries the chart version; decoding release Secrets needs
-cluster-wide Secret access, which the collector role deliberately does not
-have).
+Deferred indefinitely (*decided 2026-10-02*): Helm release Secrets as a
+source. The `helm.sh/chart` label and Argo CD `targetRevision` already give
+the chart version; reading `sh.helm.release.v1.*` Secrets would add release
+status and revision but requires cluster-wide Secret read access, which RBAC
+cannot scope to one Secret type and which the collector role deliberately
+does not have. If it is ever needed: an opt-in per collector install,
+filtered by `type=helm.sh/release.v1`, decoding only chart name, version,
+status and revision, never the values payload.
 
 **Phase 3 — configurations, history, UI (done, 2026-10-01).**
 `pkg/configuration` deep-merges a system-wide `Configuration` with the
