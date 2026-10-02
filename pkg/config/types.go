@@ -51,6 +51,11 @@ type ApplicationKindConfig struct {
 	// a version or one or more image references whose tags are used. When
 	// empty, the owned workloads decide.
 	RunningVersionPath string `description:"JSONPath of the running version or images (optional)"`
+	// PinnedVersionsPath lists versions (or image references) the resource
+	// intentionally pins for some of its parts, for example
+	// {.spec.services[*].image.tag}. Workloads running a pinned version do
+	// not count as inconsistent.
+	PinnedVersionsPath string `description:"JSONPath of intentionally pinned versions or images (optional)"`
 	// EnvironmentPath reads the environment from the resource; otherwise
 	// labels, Cluster namespace rules and the cluster default apply.
 	EnvironmentPath string `description:"JSONPath of the environment (optional)"`

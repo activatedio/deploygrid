@@ -95,6 +95,9 @@ type Resource struct {
 	// and declared selectors take precedence over them.
 	DefaultComponent   string `json:"defaultComponent,omitempty"`
 	DefaultEnvironment string `json:"defaultEnvironment,omitempty"`
+	// PinnedVersions are versions an operator application intentionally
+	// pins for some of its workloads; they do not make a cell inconsistent.
+	PinnedVersions []string `json:"pinnedVersions,omitempty"`
 }
 
 type ResourceStore interface {

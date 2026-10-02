@@ -80,6 +80,22 @@ func TestOperatorApplicationConverter(t *testing.T) {
 	a.Empty(res.SyncRevision)
 	a.Len(res.Components, 2)
 
+	// a pinned service: its tag is set aside, the rest agree
+	pinnedSuite := &unstructured.Unstructured{}
+	require.NoError(t, json.Unmarshal([]byte(riteSuite), &pinnedSuite.Object))
+	comps, _, _ = unstructured.NestedSlice(pinnedSuite.Object, "status", "components")
+	comps[1].(map[string]any)["image"] = "registry.ops.quarterhill.com/roadside/next/management:0.1.9"
+	require.NoError(t, unstructured.SetNestedSlice(pinnedSuite.Object, comps, "status", "components"))
+	require.NoError(t, unstructured.SetNestedField(pinnedSuite.Object, "0.1.9", "spec", "services", "management", "image", "tag"))
+	pinnedCfg := riteSuiteKind()
+	pinnedCfg.PinnedVersionsPath = "{.spec.services.*.image.tag}"
+	convPinned, err := k8s.NewOperatorApplicationConverter(pinnedCfg)
+	require.NoError(t, err)
+	res, err = convPinned.Convert(pinnedSuite)
+	require.NoError(t, err)
+	a.Equal("0.2.0", res.SyncRevision, "the pinned tag does not break agreement")
+	a.Equal([]string{"0.1.9"}, res.PinnedVersions)
+
 	// healthy suite, environment from a path, component from the name label
 	healthy := &unstructured.Unstructured{}
 	require.NoError(t, json.Unmarshal([]byte(riteSuite), &healthy.Object))

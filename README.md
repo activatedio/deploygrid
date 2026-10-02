@@ -76,6 +76,7 @@ sources:
       component: ritesuite                            # the row every instance maps to
       desiredVersionPath: "{.spec.version}"           # default
       runningVersionPath: "{.status.components[*].image}"  # optional
+      pinnedVersionsPath: "{.spec.services.*.image.tag}"  # optional
       healthConditionType: Ready                      # default
 ```
 
@@ -95,9 +96,12 @@ How it works, and therefore what an operator must do for this to apply:
   workloads with the deploygrid component instead.
 * **Version.** Desired from `desiredVersionPath`. Running from
   `runningVersionPath` when the operator reports it (a version, or image
-  references whose tags must agree), else from the owned workloads' image
-  tags when they agree, else from their `app.kubernetes.io/version` label.
-  Workloads running different versions mark the cell inconsistent.
+  references whose tags must agree), else the version most owned workloads
+  actually run, else their `app.kubernetes.io/version` label (which usually
+  records the intent, not what is serving, so it is the last resort).
+  Workloads running different versions mark the cell inconsistent, except
+  versions listed by `pinnedVersionsPath`, which an operator sets on
+  purpose.
 * **Health.** `Degraded=True` beats everything, then `<healthConditionType>=True`
   is healthy, `Progressing=True` is progressing, `<healthConditionType>=False`
   is degraded, no conditions is unknown.

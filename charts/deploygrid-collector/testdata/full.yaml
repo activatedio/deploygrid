@@ -13,3 +13,4 @@ sources:
       kind: RiteSuite
       component: ritesuite
       runningVersionPath: "{.status.components[*].image}"
+      pinnedVersionsPath: "{.spec.services.*.image.tag}"

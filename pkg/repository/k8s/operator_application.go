@@ -27,6 +27,7 @@ type OperatorApplicationConverter struct {
 	cfg       config.ApplicationKindConfig
 	desired   *jsonpath.JSONPath
 	running   *jsonpath.JSONPath
+	pinned    *jsonpath.JSONPath
 	env       *jsonpath.JSONPath
 	condition string
 }
@@ -59,6 +60,10 @@ func NewOperatorApplicationConverter(cfg config.ApplicationKindConfig) (*Operato
 	if err != nil {
 		return nil, err
 	}
+	pinned, err := compilePath("pinnedVersionsPath", cfg.PinnedVersionsPath)
+	if err != nil {
+		return nil, err
+	}
 	env, err := compilePath("environmentPath", cfg.EnvironmentPath)
 	if err != nil {
 		return nil, err
@@ -67,7 +72,7 @@ func NewOperatorApplicationConverter(cfg config.ApplicationKindConfig) (*Operato
 	if cond == "" {
 		cond = defaultHealthConditionType
 	}
-	return &OperatorApplicationConverter{cfg: cfg, desired: desired, running: running, env: env, condition: cond}, nil
+	return &OperatorApplicationConverter{cfg: cfg, desired: desired, running: running, pinned: pinned, env: env, condition: cond}, nil
 }
 
 // strings evaluates a path and returns every scalar result as text.
@@ -133,22 +138,35 @@ func (c *OperatorApplicationConverter) health(obj map[string]any) string {
 	}
 }
 
+// versionOf reduces a version or image reference to a plain version.
+func versionOf(v string) string {
+	if strings.Contains(v, "/") || strings.Contains(v, ":") || strings.Contains(v, "@") {
+		return ParseImageReference(v).Version()
+	}
+	return v
+}
+
 // runningVersion derives the running version from the configured path. Image
-// references are reduced to their version; when every value agrees it is the
-// version, otherwise "" (the builder then reports inconsistency from the
-// per-image components).
-func runningVersion(values []string) (version string, comps []repository.Component) {
+// references are reduced to their version; versions listed as pinned are set
+// aside. When every remaining value agrees that is the version, otherwise ""
+// (the builder then reports inconsistency and picks the majority from the
+// workloads).
+func runningVersion(values, pinned []string) (version string, comps []repository.Component) {
+	isPinned := map[string]bool{}
+	for _, p := range pinned {
+		isPinned[versionOf(p)] = true
+	}
 	seen := map[string]bool{}
 	for _, v := range values {
-		ver := v
-		name := ""
-		if strings.Contains(v, "/") || strings.Contains(v, ":") || strings.Contains(v, "@") {
+		ver := versionOf(v)
+		if ver != v {
 			ref := ParseImageReference(v)
-			ver = ref.Version()
-			name = ref.Repository[strings.LastIndex(ref.Repository, "/")+1:]
+			name := ref.Repository[strings.LastIndex(ref.Repository, "/")+1:]
 			comps = append(comps, repository.Component{Name: name, Kind: repository.VersionKindContainer, Version: ver, Image: v})
 		}
-		seen[ver] = true
+		if !isPinned[ver] {
+			seen[ver] = true
+		}
 	}
 	if len(seen) == 1 {
 		for v := range seen {
@@ -166,7 +184,12 @@ func (c *OperatorApplicationConverter) Convert(obj *unstructured.Unstructured) (
 	if vals := evalStrings(c.desired, o); len(vals) > 0 {
 		desired = vals[0]
 	}
-	running, comps := runningVersion(evalStrings(c.running, o))
+	pinnedRaw := evalStrings(c.pinned, o)
+	pinned := make([]string, 0, len(pinnedRaw))
+	for _, p := range pinnedRaw {
+		pinned = append(pinned, versionOf(p))
+	}
+	running, comps := runningVersion(evalStrings(c.running, o), pinned)
 
 	component := c.cfg.Component
 	if component == "" {
@@ -193,6 +216,7 @@ func (c *OperatorApplicationConverter) Convert(obj *unstructured.Unstructured) (
 		Health:             c.health(o),
 		DefaultComponent:   component,
 		DefaultEnvironment: env,
+		PinnedVersions:     pinned,
 	}, nil
 }
 

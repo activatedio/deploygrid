@@ -386,7 +386,7 @@ func TestBuild_OperatorApplication(t *testing.T) {
 	stage := row.Cells["stage"]
 	require.NotNil(t, stage)
 	a.True(stage.Inconsistent, "workloads run different versions")
-	a.Equal("0.3.0", stage.Version, "the stamped version when workloads disagree")
+	a.Equal("0.3.0", stage.Version, "the version most workloads run; this 1:1 tie goes to the desired version, never to the stamped intent")
 	a.Equal("0.3.0", stage.DesiredVersion)
 
 	for _, u := range res.Unassigned {
@@ -394,4 +394,32 @@ func TestBuild_OperatorApplication(t *testing.T) {
 	}
 	require.Len(t, res.Discovered, 3)
 	a.Equal(v1alpha1.ComponentKindOperatorApplication, res.Discovered[2].Kind)
+}
+
+func TestBuild_OperatorApplicationPinnedVersions(t *testing.T) {
+	in := fixture(t)
+	in.Clusters = append(in.Clusters, grid.ClusterInfo{Name: "ops-dev", Environment: "dev"})
+	app := operatorApp("suite", "dev", "0.2.0", "", repository.HealthHealthy)
+	app.PinnedVersions = []string{"0.1.9"}
+	in.Observed["ops-dev"] = snapshot(t,
+		app,
+		ownedDeployment("suite", "dev", "management", "0.2.0", "0.2.0"),
+		ownedDeployment("suite", "dev", "console", "0.2.0", "0.2.0"),
+		ownedDeployment("suite", "dev", "legacy-sync", "0.1.9", "0.2.0"), // pinned on purpose
+	)
+	in.Observed[app2Cluster] = snapshot(t)
+
+	res := grid.Build(in)
+	var cell *deploygrid.Cell
+	for _, g := range res.Grid.Groups {
+		for _, r := range g.Rows {
+			if r.Component.Name == "suite" {
+				cell = r.Cells["dev"]
+			}
+		}
+	}
+	require.NotNil(t, cell)
+	assert.Equal(t, "0.2.0", cell.Version)
+	assert.False(t, cell.Inconsistent, "a pinned service is not drift between workloads")
+	assert.Len(t, cell.Artifacts, 4, "the pinned workload is still listed")
 }

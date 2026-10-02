@@ -652,15 +652,25 @@ func placementHosts(p *placement) []string {
 
 // observedVersions summarises the versions found on a placement.
 type observedVersions struct {
-	chart     string   // chart version stamped on workloads
-	stamped   string   // app.kubernetes.io/version stamped on workloads
-	container string   // first container version
-	named     string   // container (or workload) named after the component
-	distinct  []string // distinct container versions across root and children
+	chart     string         // chart version stamped on workloads
+	stamped   string         // app.kubernetes.io/version stamped on workloads (the intent, not what runs)
+	container string         // first container version
+	named     string         // container (or workload) named after the component
+	distinct  []string       // distinct container versions across root and children, first seen first
+	counts    map[string]int // containers per version
+	pinned    map[string]bool
 }
 
 func scanVersions(component string, p *placement) observedVersions {
-	v := observedVersions{chart: p.root.ChartVersion, stamped: p.root.StampedVersion}
+	v := observedVersions{
+		chart:   p.root.ChartVersion,
+		stamped: p.root.StampedVersion,
+		counts:  map[string]int{},
+		pinned:  map[string]bool{},
+	}
+	for _, pv := range p.root.PinnedVersions {
+		v.pinned[pv] = true
+	}
 	seen := map[string]bool{}
 	for _, r := range append([]*repository.Resource{p.root}, p.children...) {
 		v.chart = firstNonEmpty(v.chart, r.ChartVersion)
@@ -679,6 +689,7 @@ func (v *observedVersions) scanContainers(component string, r *repository.Resour
 			seen[c.Version] = true
 			v.distinct = append(v.distinct, c.Version)
 		}
+		v.counts[c.Version]++
 		v.container = firstNonEmpty(v.container, c.Version)
 		if v.named == "" && (c.Name == component || r.ObjectName == component) {
 			v.named = c.Version
@@ -686,10 +697,37 @@ func (v *observedVersions) scanContainers(component string, r *repository.Resour
 	}
 }
 
+// unpinned lists the distinct container versions that are not intentionally
+// pinned, in first-seen order.
+func (v *observedVersions) unpinned() []string {
+	out := make([]string, 0, len(v.distinct))
+	for _, d := range v.distinct {
+		if !v.pinned[d] {
+			out = append(out, d)
+		}
+	}
+	return out
+}
+
 // mixed reports whether an operator application runs more than one version
-// across its workloads, which the cell reports as inconsistent.
+// across its workloads, ignoring intentionally pinned ones; the cell reports
+// this as inconsistent.
 func (v *observedVersions) mixed() bool {
-	return len(v.distinct) > 1
+	return len(v.unpinned()) > 1
+}
+
+// majority is the unpinned version run by most containers. A tie goes to
+// the desired version when it is among them (a rollout half way through
+// shows where it is going), else to the first seen.
+func (v *observedVersions) majority(desired string) string {
+	best, bestCount := "", 0
+	for _, d := range v.unpinned() {
+		count := v.counts[d]
+		if count > bestCount || (count == bestCount && d == desired) {
+			best, bestCount = d, count
+		}
+	}
+	return best
 }
 
 // actualVersion picks the running version of a placement for the component
@@ -704,15 +742,10 @@ func actualVersion(kind v1alpha1.ComponentKind, component string, p *placement) 
 	case v1alpha1.ComponentKindArgoCDApplication:
 		return firstNonEmpty(p.root.SyncRevision, v.chart)
 	case v1alpha1.ComponentKindOperatorApplication:
-		// what the operator reports as running, else what its workloads run
-		// (when they agree), else the version they were stamped with
-		if p.root.SyncRevision != "" {
-			return p.root.SyncRevision
-		}
-		if len(v.distinct) == 1 {
-			return v.distinct[0]
-		}
-		return firstNonEmpty(v.stamped, v.container)
+		// what the operator reports as running, else what most of its
+		// workloads actually run, else the version they were stamped with
+		// (which records the intent, not what is serving)
+		return firstNonEmpty(p.root.SyncRevision, v.majority(p.root.DesiredVersion), v.container, v.stamped)
 	case v1alpha1.ComponentKindService, v1alpha1.ComponentKindCustom:
 		return firstNonEmpty(v.chart, v.named, v.container, p.root.SyncRevision)
 	default:
