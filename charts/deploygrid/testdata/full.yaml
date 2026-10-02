@@ -38,4 +38,6 @@ ingress:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internal
   host: deploygrid.somehost.com
+  path: /*
+  pathType: ImplementationSpecific
 

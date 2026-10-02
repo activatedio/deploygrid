@@ -71,17 +71,21 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.ui.image.repository }}:{{ .Values.ui.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.ui.image.pullPolicy }}
+          env:
+            # nginx proxies /api to the server container in this pod
+            - name: API_PORT
+              value: "8080"
           ports:
             - name: http-ui
-              containerPort: 80
+              containerPort: 8081
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: /
+              path: /healthz
               port: http-ui
           readinessProbe:
             httpGet:
-              path: /
+              path: /healthz
               port: http-ui
           resources:
             {{- toYaml .Values.resources | nindent 12 }}

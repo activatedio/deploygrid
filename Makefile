@@ -64,7 +64,7 @@ lint: golangci-lint
 	$(GOLANGCI_LINT) run ./...
 
 serve:
-	DEPLOYGRID_SWAGGER_SWAGGER_UI_URL=http://127.0.0.1:8081 CONFIG_PATH=./testdata/config.yaml DEPLOYGRID_LOGGING_DEV_MODE=true go run ./cmd/main
+	DEPLOYGRID_SWAGGER_SWAGGER_UI_URL=http://127.0.0.1:8081 DEPLOYGRID_SERVER_CORS_ALLOWED_ORIGINS=http://localhost:5173 CONFIG_PATH=./testdata/config.yaml DEPLOYGRID_LOGGING_DEV_MODE=true go run ./cmd/main
 
 ## Run a collector against kind-app-cluster-2, pushing to the local server
 dev_collector:

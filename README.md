@@ -43,6 +43,12 @@ Two modes, usable together:
 | **agent** (recommended) | A collector inside the observed cluster pushes to the server | `Cluster` resource with `collection.mode: agent`, then install `charts/deploygrid-collector` there |
 | **kubeconfig** / **local** | The server watches the cluster itself | `clusters:` list in the server config (`local` uses the in-cluster service account) |
 
+The images are distroless (API) and unprivileged nginx (UI, which proxies
+`/api` to the API container in the same pod). There is no shell or cloud CLI
+in the API image, so kubeconfigs that need a credential helper such as the
+EKS `aws` exec plugin cannot be used in **kubeconfig** mode; use a collector
+for those clusters.
+
 For an agent-mode `Cluster` the server generates a token Secret named
 `<cluster>-collector-token` in its namespace. Pass that token to the collector
 chart:
@@ -93,7 +99,7 @@ Events on the Component (`kubectl describe component <name>`).
 
 ```sh
 make dev_kind         # three kind clusters: ops (control + Argo CD apps), two app clusters
-make serve            # API on 127.0.0.1:8080, control cluster = kind-ops-cluster-1
+make serve            # API on 127.0.0.1:8080 (CORS open for the Vite dev server), control cluster = kind-ops-cluster-1
 make dev_collector    # push kind-app-cluster-2 into the running server
 cd ui && npm run dev  # UI on http://localhost:5173 against the API
 make test lint        # integration tests need the kind clusters

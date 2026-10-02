@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/activatedio/deploygrid/pkg/store"
@@ -22,6 +23,9 @@ type Heartbeat struct {
 // arrives: server-side watches (pull) register one store per resource kind,
 // collectors (push) are given one store per kind by the ingest service.
 type SourceRegistry struct {
+	// version increments on every change to any store, error or heartbeat
+	// that affects a grid; the grid service uses it to invalidate its cache.
+	version    atomic.Uint64
 	lock       sync.RWMutex
 	stores     map[string]map[string]*store.Store // cluster → kind → store
 	errors     map[string]string                  // cluster → connection error
@@ -52,8 +56,15 @@ func (r *SourceRegistry) Store(cluster, kind string) (*store.Store, bool) {
 		return st, true
 	}
 	st := store.NewStore()
+	st.OnChange(func() { r.version.Add(1) })
 	byKind[kind] = st
+	r.version.Add(1)
 	return st, false
+}
+
+// Version is a change counter for everything that feeds a grid.
+func (r *SourceRegistry) Version() uint64 {
+	return r.version.Load()
 }
 
 // Connected reports whether any store exists for the cluster.
@@ -68,13 +79,19 @@ func (r *SourceRegistry) Connected(cluster string) bool {
 func (r *SourceRegistry) SetError(cluster string, err error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-	r.errors[cluster] = err.Error()
+	if r.errors[cluster] != err.Error() {
+		r.errors[cluster] = err.Error()
+		r.version.Add(1)
+	}
 }
 
 func (r *SourceRegistry) ClearError(cluster string) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-	delete(r.errors, cluster)
+	if _, ok := r.errors[cluster]; ok {
+		delete(r.errors, cluster)
+		r.version.Add(1)
+	}
 }
 
 // HasError reports whether a cluster-level error is recorded.
@@ -90,10 +107,14 @@ func (r *SourceRegistry) SetPushErrors(cluster string, errs []string) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 	if len(errs) == 0 {
-		delete(r.pushErrors, cluster)
+		if _, ok := r.pushErrors[cluster]; ok {
+			delete(r.pushErrors, cluster)
+			r.version.Add(1)
+		}
 		return
 	}
 	r.pushErrors[cluster] = errs
+	r.version.Add(1)
 }
 
 func (r *SourceRegistry) RecordHeartbeat(cluster string, hb Heartbeat) {

@@ -16,12 +16,26 @@ import (
 	"github.com/activatedio/deploygrid/pkg/store"
 )
 
+// cachedResult is a built grid together with the input versions it was
+// built from.
+type cachedResult struct {
+	result          *grid.Result
+	registryVersion uint64
+	catalogVersion  uint64
+}
+
 type gridService struct {
 	catalog   Catalog
 	accessor  repository.ClusterAwareAccessor[*repository.Resources]
 	registry  *SourceRegistry
 	connected map[string]bool
 	lock      sync.Mutex
+
+	// index caches the last build per System. It is invalidated by the
+	// registry and catalog change counters, so a grid is rebuilt only after
+	// something that feeds it changed, not on every request.
+	index     map[string]*cachedResult
+	indexLock sync.Mutex
 }
 
 // updateClusters connects to any pull-mode cluster not yet watched (or whose
@@ -55,14 +69,7 @@ func (g *gridService) Init() {
 	g.updateClusters(context.Background())
 }
 
-// snapshot refreshes pull-mode connections and returns the merged observed
-// state of every cluster.
-func (g *gridService) snapshot(ctx context.Context) (map[string]*store.StoreData, []string) {
-	g.updateClusters(ctx)
-	return g.registry.Snapshot()
-}
-
-func (g *gridService) build(ctx context.Context, system *v1alpha1.System, observed map[string]*store.StoreData, errs []string) (*grid.Result, error) {
+func (g *gridService) build(system *v1alpha1.System, observed map[string]*store.StoreData, errs []string) (*grid.Result, error) {
 	components, err := g.catalog.Components()
 	if err != nil {
 		return nil, err
@@ -71,7 +78,6 @@ func (g *gridService) build(ctx context.Context, system *v1alpha1.System, observ
 	if err != nil {
 		return nil, err
 	}
-	_ = ctx
 	return grid.Build(grid.Input{
 		System:     system,
 		Components: components,
@@ -82,13 +88,67 @@ func (g *gridService) build(ctx context.Context, system *v1alpha1.System, observ
 	}), nil
 }
 
+// cached returns the index entry for a system when it is still current.
+func (g *gridService) cached(system string, registryVersion, catalogVersion uint64) (*grid.Result, bool) {
+	g.indexLock.Lock()
+	defer g.indexLock.Unlock()
+	c, ok := g.index[system]
+	if !ok || c.registryVersion != registryVersion || c.catalogVersion != catalogVersion {
+		return nil, false
+	}
+	return c.result, true
+}
+
+func (g *gridService) remember(system string, res *grid.Result, registryVersion, catalogVersion uint64) {
+	g.indexLock.Lock()
+	defer g.indexLock.Unlock()
+	g.index[system] = &cachedResult{result: res, registryVersion: registryVersion, catalogVersion: catalogVersion}
+}
+
+// buildSystems returns current results for the given systems, rebuilding
+// only those whose inputs changed since they were last built. The versions
+// are read before the snapshot so that a change racing the build
+// invalidates the entry on the next call.
+func (g *gridService) buildSystems(ctx context.Context, systems []*v1alpha1.System) (map[string]*grid.Result, error) {
+	g.updateClusters(ctx)
+	registryVersion := g.registry.Version()
+	catalogVersion := g.catalog.Version()
+
+	out := make(map[string]*grid.Result, len(systems))
+	stale := make([]*v1alpha1.System, 0, len(systems))
+	for _, sys := range systems {
+		if res, ok := g.cached(sys.Name, registryVersion, catalogVersion); ok {
+			out[sys.Name] = res
+			continue
+		}
+		stale = append(stale, sys)
+	}
+	if len(stale) == 0 {
+		return out, nil
+	}
+
+	observed, errs := g.registry.Snapshot()
+	for _, sys := range stale {
+		res, err := g.build(sys, observed, errs)
+		if err != nil {
+			return nil, err
+		}
+		g.remember(sys.Name, res, registryVersion, catalogVersion)
+		out[sys.Name] = res
+	}
+	return out, nil
+}
+
 func (g *gridService) buildSystem(ctx context.Context, system string) (*grid.Result, error) {
 	sys, err := g.catalog.System(system)
 	if err != nil {
 		return nil, err
 	}
-	observed, errs := g.snapshot(ctx)
-	return g.build(ctx, sys, observed, errs)
+	results, err := g.buildSystems(ctx, []*v1alpha1.System{sys})
+	if err != nil {
+		return nil, err
+	}
+	return results[sys.Name], nil
 }
 
 func (g *gridService) BuildAll(ctx context.Context) (map[string]*grid.Result, error) {
@@ -96,16 +156,7 @@ func (g *gridService) BuildAll(ctx context.Context) (map[string]*grid.Result, er
 	if err != nil {
 		return nil, err
 	}
-	observed, errs := g.snapshot(ctx)
-	out := make(map[string]*grid.Result, len(systems))
-	for _, sys := range systems {
-		res, err := g.build(ctx, sys, observed, errs)
-		if err != nil {
-			return nil, err
-		}
-		out[sys.Name] = res
-	}
-	return out, nil
+	return g.buildSystems(ctx, systems)
 }
 
 func (g *gridService) Grid(ctx context.Context, system string) (*deploygrid.Grid, error) {
@@ -173,5 +224,6 @@ func NewGridService(params GridServiceParams) GridService {
 		accessor:  params.Accessor,
 		registry:  params.Registry,
 		connected: map[string]bool{},
+		index:     map[string]*cachedResult{},
 	}
 }

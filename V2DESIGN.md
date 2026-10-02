@@ -387,9 +387,12 @@ links and artifact detail on hover. Configured `clusters:` are merged with
 `Cluster` CRs by name, so the kubeconfig still comes from config while
 environment mapping comes from the CR.
 
-Not yet in phase 1: ingress hosts, Helm release Secrets, the per-request
-rebuild (the grid is still computed on each GET; fine at current scale, the
-index in §4.2 is the fix when it is not), and `/history`.
+Not yet in phase 1: ingress hosts and Helm release Secrets (phase 2),
+`/history` (phase 3). The per-request rebuild was replaced after phase 3 by
+an index: the grid service caches the last build per System and rebuilds
+only when the change counters of the source registry (any store mutation,
+error or collector report) or the catalog (any informer event on a
+deploygrid resource) moved. Requests and the reconciler share the cache.
 
 **Phase 2 — collector mode (done, 2026-10-01).**
 `deploygrid collector` watches a cluster with the same repositories the
@@ -409,11 +412,19 @@ ClusterRole and the token Secret. The e2e test feeds one of the three kind
 clusters through an in-process collector authenticated with the generated
 token.
 
-Deferred from phase 2: the distroless image (the server image still carries
-awscli for kubeconfig-mode EKS clusters; drop it once those move to
-collectors) and Helm release Secrets as a source (the `helm.sh/chart` label
-already carries the chart version; decoding release Secrets needs cluster-wide
-Secret access, which the collector role deliberately does not have).
+Done after phase 3 (2026-10-01): the image is `distroless/static` running
+as nonroot with the version stamped at build time; it has no shell or cloud
+CLI, so kubeconfigs that need an external credential helper (EKS `aws`
+exec plugins) are not supported in the server image — observe those
+clusters with a collector. The UI image is `nginx-unprivileged` and proxies
+`/api` to the server container in the same pod, so the ingress has one
+backend and CORS is off unless `server.corsAllowedOrigins` is set (the dev
+`make serve` sets it for the Vite server).
+
+Still deferred: Helm release Secrets as a source (the `helm.sh/chart` label
+already carries the chart version; decoding release Secrets needs
+cluster-wide Secret access, which the collector role deliberately does not
+have).
 
 **Phase 3 — configurations, history, UI (done, 2026-10-01).**
 `pkg/configuration` deep-merges a system-wide `Configuration` with the

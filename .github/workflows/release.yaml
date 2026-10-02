@@ -53,7 +53,9 @@ jobs:
           platforms: linux/arm64
           cache-to: type=gha,mode=max
           provenance: false
-          build-args: GIT_OAUTH_TOKEN=${{ secrets.GH_BUILD_PAT }}
+          build-args: |
+            GIT_OAUTH_TOKEN=${{ secrets.GH_BUILD_PAT }}
+            VERSION=${{ github.ref_name }}
 
   deploy-arm64-ui:
     runs-on: custom-ubuntu-24.04-arm
@@ -98,7 +100,9 @@ jobs:
           platforms: linux/arm64
           cache-to: type=gha,mode=max
           provenance: false
-          build-args: GIT_OAUTH_TOKEN=${{ secrets.GH_BUILD_PAT }}
+          build-args: |
+            GIT_OAUTH_TOKEN=${{ secrets.GH_BUILD_PAT }}
+            VERSION=${{ github.ref_name }}
 
   deploy-amd64-api:
     runs-on: custom-ubuntu-24.04
@@ -143,7 +147,9 @@ jobs:
           platforms: linux/amd64
           cache-to: type=gha,mode=max
           provenance: false
-          build-args: GIT_OAUTH_TOKEN=${{ secrets.GH_BUILD_PAT }}
+          build-args: |
+            GIT_OAUTH_TOKEN=${{ secrets.GH_BUILD_PAT }}
+            VERSION=${{ github.ref_name }}
 
       - name: Package and push helm chart
         run: |
@@ -196,7 +202,9 @@ jobs:
           platforms: linux/amd64
           cache-to: type=gha,mode=max
           provenance: false
-          build-args: GIT_OAUTH_TOKEN=${{ secrets.GH_BUILD_PAT }}
+          build-args: |
+            GIT_OAUTH_TOKEN=${{ secrets.GH_BUILD_PAT }}
+            VERSION=${{ github.ref_name }}
   
   create-manifests:
 

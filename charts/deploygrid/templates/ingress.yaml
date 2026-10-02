@@ -17,15 +17,10 @@ spec:
     - host: {{ .Values.ingress.host | quote }}
       http:
         paths:
-          - path: /api/*
-            pathType: ImplementationSpecific
-            backend:
-              service:
-                name: {{ include "deploygrid.fullname" $ }}
-                port:
-                  number: {{ .Values.api.service.port }}
-          - path: /*
-            pathType: ImplementationSpecific
+          # The UI container proxies /api to the server, so one backend
+          # serves everything (collectors post to /api/observations too).
+          - path: {{ .Values.ingress.path }}
+            pathType: {{ .Values.ingress.pathType }}
             backend:
               service:
                 name: {{ include "deploygrid.fullname" $ }}

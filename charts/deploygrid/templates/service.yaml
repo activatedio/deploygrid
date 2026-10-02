@@ -12,7 +12,7 @@ spec:
       protocol: TCP
       name: http-api
     - port: {{ .Values.ui.service.port }}
-      targetPort: 80
+      targetPort: 8081
       protocol: TCP
       name: http-ui
   selector:

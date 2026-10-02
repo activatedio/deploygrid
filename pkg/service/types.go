@@ -20,6 +20,9 @@ type Catalog interface {
 	Clusters() ([]grid.ClusterInfo, error)
 	Configurations() ([]*v1alpha1.Configuration, error)
 	ConfigurationViews() ([]*v1alpha1.ConfigurationView, error)
+	// Version is a change counter over every declared resource; a static
+	// catalog returns a constant.
+	Version() uint64
 }
 
 // HistoryService answers version-change queries.

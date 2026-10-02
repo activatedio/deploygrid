@@ -1,5 +1,7 @@
 package config
 
+import "strings"
+
 // Main is the root of the deploygrid configuration. Keys are lower camel case
 // of the field names (for example server.port) and every key can be overridden
 // by an environment variable of the form DEPLOYGRID_SERVER_PORT.
@@ -26,6 +28,23 @@ type LoggingConfig struct {
 type ServerConfig struct {
 	Host string `description:"Listen address"`
 	Port int    `description:"Listen port"`
+	// CorsAllowedOrigins enables CORS for the listed origins (comma
+	// separated). Empty disables CORS: in the chart the UI's nginx proxies
+	// /api so the browser sees one origin. Development against the Vite
+	// server needs http://localhost:5173.
+	CorsAllowedOrigins string `description:"Comma-separated origins allowed by CORS; empty disables CORS"`
+}
+
+// CorsOrigins returns the configured origins as a list.
+func (s ServerConfig) CorsOrigins() []string {
+	parts := strings.Split(s.CorsAllowedOrigins, ",")
+	out := make([]string, 0, len(parts))
+	for _, o := range parts {
+		if o = strings.TrimSpace(o); o != "" {
+			out = append(out, o)
+		}
+	}
+	return out
 }
 
 type SwaggerConfig struct {

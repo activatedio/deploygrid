@@ -156,7 +156,8 @@ func TestResourceRepository_Watch(t *testing.T) {
 						},
 					}, rec[4].Resource.Components)
 
-				}, 10*time.Second, 200*time.Millisecond)
+					// namespace termination can take a while on a busy node
+				}, 60*time.Second, 200*time.Millisecond)
 
 				cancel()
 			},

@@ -29,15 +29,16 @@ func (r *recoveryLogger) Println(i ...interface{}) {
 
 func NewServer(router *mux.Router, serverConfig *config.ServerConfig, lifecycle fx.Lifecycle) *RunningServer {
 
-	c := cors.New(cors.Options{
-		AllowOriginFunc: func(_ string) bool {
-			return true
-		},
-		AllowCredentials: true,
-		Debug:            true,
-	})
+	var h http.Handler = router
+	if origins := serverConfig.CorsOrigins(); len(origins) > 0 {
+		h = cors.New(cors.Options{
+			AllowedOrigins: origins,
+			AllowedMethods: []string{http.MethodGet, http.MethodPost, http.MethodOptions},
+			AllowedHeaders: []string{"Authorization", "Content-Type"},
+		}).Handler(h)
+	}
 
-	h := handlers.RecoveryHandler(handlers.RecoveryLogger(&recoveryLogger{}), handlers.PrintRecoveryStack(true))(c.Handler(router))
+	h = handlers.RecoveryHandler(handlers.RecoveryLogger(&recoveryLogger{}), handlers.PrintRecoveryStack(true))(h)
 
 	server := &http.Server{
 		Handler:           h,

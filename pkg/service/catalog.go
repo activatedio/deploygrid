@@ -1,13 +1,16 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"strings"
+	"sync/atomic"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	apiinframux "github.com/activatedio/deploygrid/pkg/apiinfra/mux"
 	"github.com/activatedio/deploygrid/pkg/apis/deploygrid.activated.io/v1alpha1"
@@ -98,6 +101,8 @@ func (c *configCatalog) Configurations() ([]*v1alpha1.Configuration, error) {
 	return nil, nil
 }
 
+func (c *configCatalog) Version() uint64 { return 0 }
+
 func (c *configCatalog) ConfigurationViews() ([]*v1alpha1.ConfigurationView, error) {
 	return nil, nil
 }
@@ -122,6 +127,25 @@ type controlCatalog struct {
 	controllers *k8s.Controllers
 	namespace   string
 	configured  []grid.ClusterInfo
+	version     atomic.Uint64
+}
+
+func (c *controlCatalog) Version() uint64 { return c.version.Load() }
+
+// watch bumps the version on every informer event of the given controllers.
+// Handlers are registered before the factory starts, so the initial list
+// counts too.
+func (c *controlCatalog) watch(ctx context.Context) {
+	bump := func(_ string, obj runtime.Object) (runtime.Object, error) {
+		c.version.Add(1)
+		return obj, nil
+	}
+	const name = "deploygrid-catalog-version"
+	c.controllers.Systems.AddGenericHandler(ctx, name, bump)
+	c.controllers.Components.AddGenericHandler(ctx, name, bump)
+	c.controllers.Clusters.AddGenericHandler(ctx, name, bump)
+	c.controllers.Configurations.AddGenericHandler(ctx, name, bump)
+	c.controllers.ConfigurationViews.AddGenericHandler(ctx, name, bump)
 }
 
 func (c *controlCatalog) Systems() ([]*v1alpha1.System, error) {
@@ -181,9 +205,11 @@ func (c *controlCatalog) ConfigurationViews() ([]*v1alpha1.ConfigurationView, er
 }
 
 func NewControlCatalog(controllers *k8s.Controllers, control *config.ControlConfig, clusters *config.ClustersConfig) Catalog {
-	return &controlCatalog{
+	c := &controlCatalog{
 		controllers: controllers,
 		namespace:   control.Namespace,
 		configured:  clusterInfosFromConfig(clusters),
 	}
+	c.watch(context.Background())
+	return c
 }

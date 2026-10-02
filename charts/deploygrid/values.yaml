@@ -73,16 +73,18 @@ podAnnotations: {}
 # For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
 podLabels: {}
 
-podSecurityContext: {}
-  # fsGroup: 2000
+# Both images run as an unprivileged user (distroless nonroot for the API,
+# nginx-unprivileged for the UI).
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
 
-securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop: ["ALL"]
 
 
 ingress:
@@ -92,6 +94,9 @@ ingress:
     # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
   host: chart-example.local
+  # Use "/*" with ImplementationSpecific for ALB/GCE style controllers.
+  path: /
+  pathType: Prefix
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious

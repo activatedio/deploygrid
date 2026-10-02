@@ -71,6 +71,25 @@ type Store struct {
 	lock     sync.RWMutex
 	data     *StoreData
 	snapshot *StoreData
+	// onChange, when set, runs after every mutation (outside the lock) so
+	// owners can invalidate derived data.
+	onChange func()
+}
+
+// OnChange registers the mutation callback.
+func (s *Store) OnChange(fn func()) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.onChange = fn
+}
+
+func (s *Store) changed() {
+	s.lock.RLock()
+	fn := s.onChange
+	s.lock.RUnlock()
+	if fn != nil {
+		fn()
+	}
 }
 
 func NewStore() *Store {
@@ -124,15 +143,15 @@ func (s *Store) GetData() (*StoreData, error) {
 
 func (s *Store) Add(in *repository.Resource) error {
 	s.lock.Lock()
-	defer s.lock.Unlock()
-
 	s.addNoLock(in)
+	s.lock.Unlock()
+	s.changed()
 	return nil
 }
 
 func (s *Store) addNoLock(in *repository.Resource) {
 
-	log.Info().Interface("resource", in).Msg("adding to store")
+	log.Debug().Str("resource", in.Name).Msg("adding to store")
 
 	s.data.entries[in.Name] = in
 
@@ -147,11 +166,11 @@ func (s *Store) addNoLock(in *repository.Resource) {
 // Parents are set on creation and cannot be modified
 func (s *Store) Modify(in *repository.Resource) error {
 	s.lock.Lock()
-	defer s.lock.Unlock()
 
-	log.Info().Interface("resource", in).Msg("modifying in store")
+	log.Debug().Str("resource", in.Name).Msg("modifying in store")
 
 	if existing, ok := s.data.entries[in.Name]; ok && existing.Parent != in.Parent {
+		s.lock.Unlock()
 		return errors.New("cannot modify parent")
 	}
 
@@ -159,17 +178,19 @@ func (s *Store) Modify(in *repository.Resource) error {
 
 	s.clearSnapshot()
 	s.clearError()
+	s.lock.Unlock()
+	s.changed()
 
 	return nil
 }
 
 func (s *Store) Delete(in *repository.Resource) error {
 	s.lock.Lock()
-	defer s.lock.Unlock()
 
-	log.Info().Interface("resource", in).Msg("deleting from store")
+	log.Debug().Str("resource", in.Name).Msg("deleting from store")
 
 	if existing, ok := s.data.entries[in.Name]; ok && existing.Parent != in.Parent {
+		s.lock.Unlock()
 		return errors.New("cannot modify parent")
 	}
 	delete(s.data.entries, in.Name)
@@ -180,30 +201,33 @@ func (s *Store) Delete(in *repository.Resource) error {
 
 	s.clearSnapshot()
 	s.clearError()
+	s.lock.Unlock()
+	s.changed()
 
 	return nil
 }
 
 func (s *Store) Replace(in []*repository.Resource) error {
 	s.lock.Lock()
-	defer s.lock.Unlock()
 
-	log.Info().Interface("resources", in).Msg("replacing store")
+	log.Debug().Int("resources", len(in)).Msg("replacing store")
 
 	s.init()
 
 	for _, r := range in {
 		s.addNoLock(r)
 	}
+	s.lock.Unlock()
+	s.changed()
 
 	return nil
 }
 
 func (s *Store) Error(err error) {
 	s.lock.Lock()
-	defer s.lock.Unlock()
-
 	s.errorNoLock(err)
+	s.lock.Unlock()
+	s.changed()
 }
 
 func (s *Store) errorNoLock(err error) {
