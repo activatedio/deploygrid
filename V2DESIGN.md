@@ -234,8 +234,8 @@ Sources, in order of delivery:
    2026-10-02): any GVR, with JSONPaths for desired/running version and
    environment and a health condition type. Workloads link to the CR
    through controller `ownerReferences`, so the same mechanism serves any
-   controller-runtime operator; the first one is RiteSuite
-   (`platform.ritesuite.com/v1alpha1`).
+   controller-runtime operator. The kind fixture simulates one with a
+   hypothetical `AppSuite` kind (`platform.example.com/v1alpha1`).
 5. Helm release Secrets (`type: helm.sh/release.v1`; chart name/version without Argo CD) — deferred, see §8.
 
 ### 4.2 Server pipeline

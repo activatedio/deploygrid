@@ -60,7 +60,7 @@ func TestE2E(t *testing.T) {
 			require.Len(c, sg.Groups, 2)
 			require.Equal(c, "apps", sg.Groups[0].Name)
 			require.Equal(c, "Default", sg.Groups[1].Name)
-			require.Equal(c, "ritesuite", sg.Groups[1].Rows[0].Component.Name)
+			require.Equal(c, "appsuite", sg.Groups[1].Rows[0].Component.Name)
 			require.Len(c, sg.Groups[0].Rows, 2)
 			appA := sg.Groups[0].Rows[0]
 			require.Equal(c, "app-a", appA.Component.Name)
@@ -83,7 +83,7 @@ func TestE2E(t *testing.T) {
 			resp, err = json(r.R()).SetError(e).SetResult(rows).Get("/api/systems/apps/components")
 			require.NoError(c, err)
 			require.True(c, resp.IsSuccess(), resp.String())
-			require.Len(c, rows.Items, 3, "app-a, discovered app-b, operator-installed ritesuite")
+			require.Len(c, rows.Items, 3, "app-a, discovered app-b, operator-installed appsuite")
 
 			// app-b is not declared: discovery shows it and the reconciler
 			// materialises a Component resource for it
@@ -114,15 +114,15 @@ func TestE2E(t *testing.T) {
 			require.NoError(c, err)
 			require.Equal(c, 404, resp.StatusCode())
 
-			// an operator-installed application: the RiteSuite custom resource
+			// an operator-installed application: the AppSuite custom resource
 			// and the deployments that carry a controller ownerReference to it
 			suite := &deploygrid.GridRow{}
-			resp, err = json(r.R()).SetError(e).SetResult(suite).Get("/api/systems/apps/components/ritesuite")
+			resp, err = json(r.R()).SetError(e).SetResult(suite).Get("/api/systems/apps/components/appsuite")
 			require.NoError(c, err)
 			require.True(c, resp.IsSuccess(), resp.String())
 			require.Equal(c, string(v1alpha1.ComponentKindOperatorApplication), suite.Component.Kind)
 			sdev := suite.Cells["dev"]
-			require.NotNil(c, sdev, "dev cell via the ritesuite namespace rule: %v", suite.Cells)
+			require.NotNil(c, sdev, "dev cell via the appsuite namespace rule: %v", suite.Cells)
 			require.Equal(c, "0.2.0", sdev.Version)
 			require.Equal(c, "0.2.0", sdev.DesiredVersion)
 			// the custom resource claims Ready, but its fixture Deployments use

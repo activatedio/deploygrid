@@ -7,10 +7,10 @@ image:
   tag: v0.1.0
 sources:
   applicationKinds:
-    - group: platform.ritesuite.com
+    - group: platform.example.com
       version: v1alpha1
-      resource: ritesuites
-      kind: RiteSuite
-      component: ritesuite
+      resource: appsuites
+      kind: AppSuite
+      component: appsuite
       runningVersionPath: "{.status.components[*].image}"
       pinnedVersionsPath: "{.spec.services.*.image.tag}"

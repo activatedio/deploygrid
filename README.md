@@ -70,18 +70,19 @@ helm install deploygrid-collector charts/deploygrid-collector \
 
 ## Operator-installed applications
 
-Applications installed by an operator from a custom resource (for example a
-`RiteSuite`) are observed by declaring the kind in `sources.applicationKinds`
+Applications installed by an operator from a custom resource (the examples
+use a hypothetical `AppSuite` kind) are observed by declaring the kind in
+`sources.applicationKinds`
 on the server and on each collector:
 
 ```yaml
 sources:
   applicationKinds:
-    - group: platform.ritesuite.com
+    - group: platform.example.com
       version: v1alpha1
-      resource: ritesuites
-      kind: RiteSuite                                 # as in ownerReferences
-      component: ritesuite                            # the row every instance maps to
+      resource: appsuites
+      kind: AppSuite                                 # as in ownerReferences
+      component: appsuite                            # the row every instance maps to
       desiredVersionPath: "{.spec.version}"           # default
       runningVersionPath: "{.status.components[*].image}"  # optional
       pinnedVersionsPath: "{.spec.services.*.image.tag}"  # optional

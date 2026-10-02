@@ -39,7 +39,7 @@ spec:
     - match: "qa-*"
       environment: qa
     # the operator-installed suite lives in its own namespace
-    - match: ritesuite
+    - match: appsuite
       environment: dev
   collection:
     mode: kubeconfig

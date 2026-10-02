@@ -27,8 +27,8 @@ type Main struct {
 // SourcesConfig lists extra observed resource kinds.
 type SourcesConfig struct {
 	// ApplicationKinds are custom resources that represent an application
-	// installed by an operator, for example platform.ritesuite.com
-	// RiteSuite. Workloads that carry a controller ownerReference to such a
+	// installed by an operator, for example platform.example.com
+	// AppSuite. Workloads that carry a controller ownerReference to such a
 	// resource are grouped under it.
 	ApplicationKinds []ApplicationKindConfig `description:"Operator application custom resources"`
 }
@@ -37,10 +37,10 @@ type SourcesConfig struct {
 // Kubernetes JSONPath expressions evaluated against the custom resource,
 // with or without the surrounding braces.
 type ApplicationKindConfig struct {
-	Group    string `description:"API group, e.g. platform.ritesuite.com"`
+	Group    string `description:"API group, e.g. platform.example.com"`
 	Version  string `description:"API version, e.g. v1alpha1"`
-	Resource string `description:"Plural resource, e.g. ritesuites"`
-	Kind     string `description:"Kind, as it appears in ownerReferences, e.g. RiteSuite"`
+	Resource string `description:"Plural resource, e.g. appsuites"`
+	Kind     string `description:"Kind, as it appears in ownerReferences, e.g. AppSuite"`
 	// Component is the grid row every instance of this kind maps to. When
 	// empty, the app.kubernetes.io/name label or the resource name is used.
 	Component string `description:"Component (row) for all instances; defaults to the app.kubernetes.io/name label or the resource name"`

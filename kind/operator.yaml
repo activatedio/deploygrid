@@ -1,21 +1,21 @@
 ## Simulates an operator-installed application on an app cluster: the
-## RiteSuite custom resource (CRD in operator-crd.yaml) and the workloads an
+## AppSuite custom resource (CRD in operator-crd.yaml) and the workloads an
 ## operator would create for it. setup.sh adds the controller
 ## ownerReferences after the CR exists, since they must carry its UID.
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: ritesuite
+  name: appsuite
 ---
-apiVersion: platform.ritesuite.com/v1alpha1
-kind: RiteSuite
+apiVersion: platform.example.com/v1alpha1
+kind: AppSuite
 metadata:
   name: dev
-  namespace: ritesuite
+  namespace: appsuite
 spec:
   preset: dev
-  registry: registry.example.com/roadside/next
+  registry: registry.example.com/apps
   version: 0.2.0
 status:
   observedGeneration: 1
@@ -29,22 +29,22 @@ status:
       lastTransitionTime: "2026-10-01T00:00:00Z"
   components:
     - name: management
-      image: registry.example.com/roadside/next/management:0.2.0
+      image: registry.example.com/apps/management:0.2.0
       ready: true
     - name: console
-      image: registry.example.com/roadside/next/console:0.2.0
+      image: registry.example.com/apps/console:0.2.0
       ready: true
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: ritesuite
+  namespace: appsuite
   name: dev-management
   labels:
     app.kubernetes.io/name: management
     app.kubernetes.io/instance: dev
-    app.kubernetes.io/part-of: ritesuite
-    app.kubernetes.io/managed-by: ritesuite-operator
+    app.kubernetes.io/part-of: appsuite
+    app.kubernetes.io/managed-by: appsuite-operator
     app.kubernetes.io/version: 0.2.0
 spec:
   replicas: 1
@@ -56,18 +56,18 @@ spec:
     spec:
       containers:
         - name: management
-          image: registry.example.com/roadside/next/management:0.2.0
+          image: registry.example.com/apps/management:0.2.0
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: ritesuite
+  namespace: appsuite
   name: dev-console
   labels:
     app.kubernetes.io/name: console
     app.kubernetes.io/instance: dev
-    app.kubernetes.io/part-of: ritesuite
-    app.kubernetes.io/managed-by: ritesuite-operator
+    app.kubernetes.io/part-of: appsuite
+    app.kubernetes.io/managed-by: appsuite-operator
     app.kubernetes.io/version: 0.2.0
 spec:
   replicas: 1
@@ -79,4 +79,4 @@ spec:
     spec:
       containers:
         - name: console
-          image: registry.example.com/roadside/next/console:0.2.0
+          image: registry.example.com/apps/console:0.2.0
