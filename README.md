@@ -34,6 +34,21 @@ desired version, drift, health, cluster, namespace, hosts and links.
 
 The full design, conventions and roadmap are in [V2DESIGN.md](V2DESIGN.md).
 
+## Installing
+
+Tagged releases publish multi-arch images and both charts to GitHub's
+registry. The charts live under the repository path, not the organisation
+root:
+
+```sh
+helm install deploygrid oci://ghcr.io/activatedio/deploygrid/deploygrid --version 2.0.2 -n deploygrid --create-namespace
+helm install deploygrid-collector oci://ghcr.io/activatedio/deploygrid/deploygrid-collector --version 2.0.2 -n deploygrid
+```
+
+Images: `ghcr.io/activatedio/deploygrid-api:v2.0.2` and
+`ghcr.io/activatedio/deploygrid-ui:v2.0.2` (the chart defaults follow the
+chart version).
+
 ## Observing clusters
 
 Two modes, usable together:
